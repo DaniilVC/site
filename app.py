@@ -1,3 +1,4 @@
+# Понятное дело - библиотеки
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -5,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db, Base, engine
 from models import User, UserRole
 from pwdlib import PasswordHash
+
 
 '''
 ==== Функции ====
