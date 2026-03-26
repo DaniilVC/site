@@ -1,10 +1,16 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from database import get_db, Base
+from database import get_db, Base, engine
 from models import User, UserRole
 from pwdlib import PasswordHash
+
+'''
+==== Функции ====
+'''
+# Создаёт таблицу, если отсутствует
+Base.metadata.create_all(bind=engine)
 
 # Хеширование пароля
 def hash_password(password: str) -> str:
@@ -15,6 +21,10 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     password_hash = PasswordHash.recommended()
     return password_hash.verify(plain_password, hashed_password)
+
+'''
+==== Начинка сайта ====
+'''
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")    
