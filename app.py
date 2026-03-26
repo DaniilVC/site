@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db, Base, engine
 from models import User, UserRole
 from pwdlib import PasswordHash
-
+import jwt
 
 '''
 ==== Функции ====
