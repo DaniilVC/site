@@ -1,62 +1,93 @@
-/* ===== Личный кабинет ===== */
+/* ===== Личный кабинет (дополнение к common.css) ===== */
 
 .dashboard-container {
-    width: 100%;
     max-width: 600px;
-    padding: 20px;
     margin: 0 auto;
+    padding: 40px 20px;
 }
 
 .dashboard-box {
     background: white;
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    padding: 30px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    padding: 40px;
 }
 
 .dashboard-box h2 {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
     color: #333;
+    font-size: 28px;
 }
 
-.user-info {
-    margin: 20px 0;
+/* Кнопка админ-панели */
+.admin-btn {
+    display: inline-block;
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.user-info p {
-    margin: 10px 0;
-    color: #555;
+.admin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
 }
 
+/* 🔥 Кнопка выхода */
 .logout-btn {
+    width: 100%;
+    padding: 14px;
     background: #f44336;
     color: white;
     border: none;
-    padding: 10px 20px;
     border-radius: 5px;
-    cursor: pointer;
     font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .logout-btn:hover {
-    background: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(244, 67, 54, 0.4);
 }
 
-.message {
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 5px;
-    display: none;
+/* Информация о пользователе */
+.user-info {
+    margin: 30px 0;
 }
 
-.message.error {
-    background: #ffebee;
-    color: #c62828;
-    display: block;
+.user-info p {
+    margin: 15px 0;
+    color: #555;
+    font-size: 16px;
 }
 
-.message.success {
-    background: #e8f5e9;
-    color: #2e7d32;
-    display: block;
+.user-info strong {
+    color: #333;
+}
+
+#loadingMessage {
+    text-align: center;
+    color: #666;
+    padding: 20px;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+    .dashboard-box {
+        padding: 30px 20px;
+    }
+    
+    .dashboard-box h2 {
+        font-size: 24px;
+    }
 }

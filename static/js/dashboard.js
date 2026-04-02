@@ -42,7 +42,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('telephone_number').textContent = user.telephone_number || 'Не указан';
         document.getElementById('company').textContent = user.company || 'Не указана';
         
-        // 4. Скрываем "Загрузка..."
+        // 🔥 4. Показываем кнопку админки, если роль admin
+        if (user.role === 'admin') {
+            const adminBtn = document.getElementById('adminPanelBtn');
+            if (adminBtn) {
+                adminBtn.style.display = 'block';
+                console.log('✅ Пользователь админ → показываем кнопку админ-панели');
+            }
+        }
+        
+        // 5. Скрываем "Загрузка..."
         const loadingMsg = document.getElementById('loadingMessage');
         if (loadingMsg) {
             loadingMsg.style.display = 'none';

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <a href="/dashboard.html" class="back-link">← Назад в личный кабинет</a>
+        
+        <h1>🔧 Админ-панель</h1>
+        
+        <!-- Статистика -->
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Всего пользователей</h3>
+                <div class="number" id="totalUsers">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Админов</h3>
+                <div class="number" id="adminCount">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Агентов</h3>
+                <div class="number" id="agentCount">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Наблюдателей</h3>
+                <div class="number" id="viewerCount">-</div>
+            </div>
+        </div>
+        
+        <!-- Таблица пользователей -->
+        <div class="users-table">
+            <h2>👥 Пользователи</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Имя</th>
+                        <th>Email</th>
+                        <th>Телефон</th>
+                        <th>Компания</th>
+                        <th>Роль</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr><td colspan="7">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

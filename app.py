@@ -1,5 +1,5 @@
 # Понятное дело - библиотеки
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from config import Config
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -59,6 +59,34 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     else:
         raise HTTPException(status_code=401, detail="Отсутствует токен")
 
+# Проверяет, что пользователь - агент, директор, админ
+def check_admin_role(current_user: User = Depends(get_current_user)):
+    """Проверяет, что пользователь - админ"""
+    if current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Доступ запрещён. Требуются права администратора."
+        )
+    return current_user
+
+def check_agent_role(current_user: User = Depends(get_current_user)):
+    """Проверяет, что пользователь - агент"""
+    if current_user.role != UserRole.agent:
+        raise HTTPException(
+            status_code=403,
+            detail="Доступ запрещён. Требуются права агента."
+        )
+    return current_user
+
+def check_director_role(current_user: User = Depends(get_current_user)):
+    """Проверяет, что пользователь - директор"""
+    if current_user.role != UserRole.director:
+        raise HTTPException(
+            status_code=403,
+            detail="Доступ запрещён. Требуются права директора."
+        )
+    return current_user
+
 '''
 ==== Начинка сайта ====
 '''
@@ -81,6 +109,10 @@ async def register():
 @app.get("/dashboard.html")
 async def dashboard_page():
     return FileResponse("static/dashboard.html")
+
+@app.get("/admin.html")
+async def admin_page():
+    return FileResponse("static/admin.html")
 
 '''
  ==== API =====
@@ -181,3 +213,100 @@ def logout():
 @app.get("/api/dashboard")
 async def dashboard(current_user: User = Depends(get_current_user)):
     return FileResponse("static/dashboard.html")
+
+'''
+==== Админка ====
+'''
+
+@app.get("/api/admin/users")
+async def get_all_users(
+    current_user: User = Depends(check_admin_role),
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).all()
+    return {
+        "count": len(users),
+        "users": [
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "role": user.role.value,
+                "telephone_number": user.telephone_number,
+                "company": user.company,
+                "created_at": user.created_at
+            }
+            for user in users
+        ]
+    }
+
+@app.put("/api/admin/users/{user_id}/role")
+async def change_user_role(
+    user_id: int,
+    role_data: dict,
+    current_user: User = Depends(check_admin_role),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    # Нельзя изменить роль самого себя
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Нельзя изменить свою роль")
+    
+    # Проверяем, что роль существует
+    new_role = role_data.get("role")
+    if new_role not in ["viewer", "agent", "admin"]:
+        raise HTTPException(status_code=400, detail="Неверная роль")
+    
+    user.role = UserRole(new_role)
+    db.commit()
+    
+    return {
+        "message": "Роль изменена",
+        "user_id": user.id,
+        "new_role": new_role
+    }
+
+@app.delete("/api/admin/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    current_user: User = Depends(check_admin_role),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Нельзя удалить себя")
+    
+    db.delete(user)
+    db.commit()
+    
+    return {
+        "message": "Пользователь удалён",
+        "user_id": user_id
+    }
+
+@app.get("/api/admin/stats")
+async def get_stats(
+    current_user: User = Depends(check_admin_role),
+    db: Session = Depends(get_db)
+):
+    total_users = db.query(User).count()
+    admins = db.query(User).filter(User.role == UserRole.admin).count()
+    agents = db.query(User).filter(User.role == UserRole.agent).count()
+    viewers = db.query(User).filter(User.role == UserRole.viewer).count()
+    
+    return {
+        "total": total_users,
+        "by_role": {
+            "admin": admins,
+            "agent": agents,
+            "viewer": viewers
+        }
+    }

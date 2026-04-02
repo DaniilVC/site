@@ -11,21 +11,25 @@
     <div class="dashboard-container">
         <div class="dashboard-box">
             <h2>👤 Личный кабинет</h2>
-            
-            <div id="message" class="message"></div>
+
             <div id="loadingMessage">Загрузка...</div>
             
             <div class="user-info">
-                <p><strong>Имя пользователя:</strong> <span id="username">Загрузка...</span></p>
-                <p><strong>Email:</strong> <span id="email">Загрузка...</span></p>
-                <p><strong>Роль:</strong> <span id="role">Загрузка...</span></p>
-                <p><strong>Телефон:</strong> <span id="telephone_number">Загрузка...</span></p>
-                <p><strong>Компания:</strong> <span id="company">Загрузка...</span></p>
+                <p><strong>Имя пользователя:</strong> <span id="username">...</span></p>
+                <p><strong>Email:</strong> <span id="email">...</span></p>
+                <p><strong>Роль:</strong> <span id="role">...</span></p>
+                <p><strong>Телефон:</strong> <span id="telephone_number">...</span></p>
+                <p><strong>Компания:</strong> <span id="company">...</span></p>
+            </div>
+            
+            <div id="adminPanelBtn" style="display: none; margin-bottom: 20px;">
+                <a href="/admin.html" class="admin-btn">🔧 Админ-панель</a>
             </div>
             
             <button id="logoutBtn" class="logout-btn">🚪 Выйти</button>
         </div>
     </div>
-    <script src="/static/js/dashboard.js?v=1.2"></script>
+
+    <script src="/static/js/dashboard.js?v=2.2"></script>
 </body>
 </html>
