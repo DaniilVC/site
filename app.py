@@ -1,12 +1,24 @@
 # Понятное дело - библиотеки
 from fastapi import FastAPI, Depends, HTTPException
+from config import Config
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database import get_db, Base, engine
 from models import User, UserRole
 from pwdlib import PasswordHash
+from datetime import datetime, timedelta
 import jwt
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+
+'''
+==== Конфигурация ====
+'''
+JWT_SECRET = Config.JWT_SECRET
+ALGORITHM = "HS256"
+
+security = HTTPBearer(auto_error=False)
 
 '''
 ==== Функции ====
@@ -23,6 +35,29 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     password_hash = PasswordHash.recommended()
     return password_hash.verify(plain_password, hashed_password)
+
+# Создание JWT токена
+def create_token(user_id: int, username: str, role: str) -> str:
+    payload = {"user_id": user_id, 
+               "username": username,
+               "role": role}
+    token = jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+    return token
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    if credentials:
+        token = credentials.credentials
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+            user_id = payload.get("user_id")
+            user = db.query(User).filter(User.id == user_id).first()
+            return user
+        except ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Токен истёк")
+        except InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Неверный токен")
+    else:
+        raise HTTPException(status_code=401, detail="Отсутствует токен")
 
 '''
 ==== Начинка сайта ====
@@ -43,6 +78,10 @@ async def login():
 async def register():
     return FileResponse("static/register.html")
 
+@app.get("/dashboard.html")
+async def dashboard_page():
+    return FileResponse("static/dashboard.html")
+
 '''
  ==== API =====
 ''' 
@@ -52,6 +91,7 @@ async def test(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return {"message": "Test successful!", "users": users}
 
+# Регистрация нового пользователя
 @app.post("/api/register")
 def register(user_data: dict, db: Session = Depends(get_db)):
     print("Пароль: ", user_data["password"])
@@ -82,7 +122,8 @@ def register(user_data: dict, db: Session = Depends(get_db)):
         "user_id": new_user.id
     }
 
-app.post("/api/login")
+# Вход в систему
+@app.post("/api/login")
 def login(login_data: dict, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data["email"]).first()
     
@@ -92,7 +133,57 @@ def login(login_data: dict, db: Session = Depends(get_db)):
             detail="Неверная почта или пароль"
         )
     
+    access_token = create_token(
+        user.id, 
+        user.username, 
+        user.role.value
+    )
+
     return {
         "message": "Вход выполнен", 
-        "username": user.username
+        "username": user.username,
+        "access_token": access_token,
+        "role": user.role.value,
+        "email": user.email,
+        "UserRole": user.role.value
     }
+
+# Личный кабинет
+@app.get("/api/profile")
+def profile(current_user: User = Depends(get_current_user)):
+    return {
+        "username": current_user.username,
+        "email": current_user.email,
+        "telephone_number": current_user.telephone_number,
+        "company": current_user.company,
+        "role": current_user.role.value
+    }
+
+@app.put("/api/profile")
+def update_profile(update_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if "username" in update_data:
+        current_user.username = update_data["username"]
+    if "telephone_number" in update_data:
+        current_user.telephone_number = update_data["telephone_number"]
+    if "company" in update_data:
+        current_user.company = update_data["company"]
+    
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Профиль обновлён",
+        "username": current_user.username,
+        "email": current_user.email,
+        "telephone_number": current_user.telephone_number,
+        "company": current_user.company,
+        "role": current_user.role.value
+    }
+
+@app.post("/api/logout")
+def logout():
+    return {"message": "Вы вышли из системы"}
+
+@app.get("/api/dashboard")
+async def dashboard(current_user: User = Depends(get_current_user)):
+    return FileResponse("static/dashboard.html")

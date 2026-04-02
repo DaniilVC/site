@@ -15,3 +15,6 @@ class Config:
         f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # JWT ключ
+    JWT_SECRET = os.getenv('JWT_SECRET')
