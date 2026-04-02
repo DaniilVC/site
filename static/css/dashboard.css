@@ -1,0 +1,62 @@
+/* ===== Личный кабинет ===== */
+
+.dashboard-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    margin: 0 auto;
+}
+
+.dashboard-box {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 30px;
+}
+
+.dashboard-box h2 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.user-info {
+    margin: 20px 0;
+}
+
+.user-info p {
+    margin: 10px 0;
+    color: #555;
+}
+
+.logout-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.logout-btn:hover {
+    background: #d32f2f;
+}
+
+.message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    display: none;
+}
+
+.message.error {
+    background: #ffebee;
+    color: #c62828;
+    display: block;
+}
+
+.message.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    display: block;
+}

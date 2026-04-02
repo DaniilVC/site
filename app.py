@@ -85,12 +85,6 @@ async def dashboard_page():
 '''
  ==== API =====
 ''' 
-# Проверка кол-ва пользователей в базе данных
-@app.get("/api/test")
-async def test(db: Session = Depends(get_db)):
-    users = db.query(User).all()
-    return {"message": "Test successful!", "users": users}
-
 # Регистрация нового пользователя
 @app.post("/api/register")
 def register(user_data: dict, db: Session = Depends(get_db)):

@@ -1,14 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="static/css/common.css">
-    <link rel="stylesheet" href="static/css/dashboard.css">
-    <title>Dashboard</title>
+    <title>Личный кабинет</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
-    <h1>Dashboard</h1>
-    <p>Welcome to your dashboard!</p>
+    <div class="dashboard-container">
+        <div class="dashboard-box">
+            <h2>👤 Личный кабинет</h2>
+            
+            <div id="message" class="message"></div>
+            <div id="loadingMessage">Загрузка...</div>
+            
+            <div class="user-info">
+                <p><strong>Имя пользователя:</strong> <span id="username">Загрузка...</span></p>
+                <p><strong>Email:</strong> <span id="email">Загрузка...</span></p>
+                <p><strong>Роль:</strong> <span id="role">Загрузка...</span></p>
+                <p><strong>Телефон:</strong> <span id="telephone_number">Загрузка...</span></p>
+                <p><strong>Компания:</strong> <span id="company">Загрузка...</span></p>
+            </div>
+            
+            <button id="logoutBtn" class="logout-btn">🚪 Выйти</button>
+        </div>
+    </div>
+    <script src="/static/js/dashboard.js?v=1.2"></script>
 </body>
 </html>
