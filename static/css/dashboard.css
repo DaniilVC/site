@@ -7,15 +7,17 @@
 }
 
 .dashboard-box {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 40px var(--shadow);
     padding: 40px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .dashboard-box h2 {
     margin-bottom: 30px;
-    color: #333;
+    /* ✅ Заменено: #333 -> var(--text-main) */
+    color: var(--text-main);
     font-size: 28px;
 }
 
@@ -24,7 +26,7 @@
     display: inline-block;
     width: 100%;
     padding: 14px;
-    background: #667eea;
+    background: var(--accent);
     color: white;
     text-align: center;
     text-decoration: none;
@@ -32,32 +34,34 @@
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 10px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
 }
 
 .admin-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    /* ✅ Заменено: rgba -> var(--accent-shadow) */
+    box-shadow: 0 5px 20px var(--accent-shadow);
 }
 
 /* 🔥 Кнопка выхода */
 .logout-btn {
     width: 100%;
     padding: 14px;
-    background: #f44336;
+    background: var(--danger);
     color: white;
     border: none;
     border-radius: 5px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    margin-top: 10px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    /*margin-top: 10px;*/
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
 }
 
 .logout-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(244, 67, 54, 0.4);
+    /* ✅ Заменено: rgba -> var(--danger-shadow) */
+    box-shadow: 0 5px 20px var(--danger-shadow);
 }
 
 /* Информация о пользователе */
@@ -67,18 +71,21 @@
 
 .user-info p {
     margin: 15px 0;
-    color: #555;
+    color: var(--text-secondary);
     font-size: 16px;
+    transition: color 0.3s ease;
 }
 
 .user-info strong {
-    color: #333;
+    color: var(--text-main);
+    transition: color 0.3s ease;
 }
 
 #loadingMessage {
     text-align: center;
-    color: #666;
+    color: var(--text-muted);
     padding: 20px;
+    transition: color 0.3s ease;
 }
 
 /* Адаптивность */

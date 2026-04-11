@@ -301,13 +301,15 @@ async def get_stats(
     admins = db.query(User).filter(User.role == UserRole.admin).count()
     agents = db.query(User).filter(User.role == UserRole.agent).count()
     viewers = db.query(User).filter(User.role == UserRole.viewer).count()
+    directors = db.query(User).filter(User.role == UserRole.director).count()
     
     return {
         "total": total_users,
         "by_role": {
             "admin": admins,
             "agent": agents,
-            "viewer": viewers
+            "viewer": viewers,
+            "director": directors
         }
     }
 

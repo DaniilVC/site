@@ -1,4 +1,58 @@
-/* ===== Базовые стили ===== */
+/* ===== 1. Переменные темы (Светлая по умолчанию) ===== */
+:root {
+    --bg-body: #f5f5f5;
+    --bg-card: #ffffff;
+    --input-bg: #ffffff;
+    --text-main: #1a1a1a;
+    --text-label: #555555;
+    --text-footer: #666666;
+    --text-input: #1a1a1a;
+    --border-input: #e1e1e1;
+    --shadow: rgba(0, 0, 0, 0.2);
+    --accent: #667eea;
+    --accent-shadow: rgba(102, 126, 234, 0.4);
+    --btn-primary: #4CAF50;
+    --btn-primary-shadow: rgba(76, 175, 80, 0.4);
+    --msg-error-bg: #ffe6e6;
+    --msg-error-color: #d32f2f;
+    --msg-error-border: #ffcdd2;
+    --msg-success-bg: #e6ffe6;
+    --msg-success-color: #388e3c;
+    --msg-success-border: #c8e6c9;
+    --footer-link: #667eea;
+    --danger: #f44336;
+    --danger-shadow: rgba(244, 67, 54, 0.4);
+}
+
+/* ===== 2. Переопределение для Тёмной темы ===== */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-body: #121212;
+        --bg-card: #1e1e1e;
+        --input-bg: #2a2a2a;
+        --text-main: #f0f0f0;
+        --text-label: #bbbbbb;
+        --text-footer: #999999;
+        --text-input: #ffffff;
+        --border-input: #444444;
+        --shadow: rgba(0, 0, 0, 0.5);
+        --accent: #818cf8;
+        --accent-shadow: rgba(129, 140, 248, 0.4);
+        --btn-primary: #4CAF50;
+        --btn-primary-shadow: rgba(76, 175, 80, 0.5);
+        --msg-error-bg: #3e1c1c;
+        --msg-error-color: #ff6b6b;
+        --msg-error-border: #5c2a2a;
+        --msg-success-bg: #1c3e1c;
+        --msg-success-color: #6bffa1;
+        --msg-success-border: #2a5c2a;
+        --footer-link: #818cf8;
+        --danger: #ef4444;
+        --danger-shadow: rgba(239, 68, 68, 0.5);
+    }
+}
+
+/* ===== 3. Базовые сбросы ===== */
 * {
     margin: 0;
     padding: 0;
@@ -7,11 +61,13 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: white;
+    background-color: var(--bg-body);
+    color: var(--text-main);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ===== Контейнер формы ===== */
@@ -25,16 +81,17 @@ body {
 /* ===== Карточка формы ===== */
 .login-box,
 .register-box {
-    background: white;
+    background: var(--bg-card);
     border-radius: 10px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 40px var(--shadow);
     padding: 40px;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .login-box h2,
 .register-box h2 {
     text-align: center;
-    color: #333;
+    color: var(--text-main);
     margin-bottom: 30px;
     font-size: 28px;
 }
@@ -47,7 +104,7 @@ body {
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: #555;
+    color: var(--text-label);
     font-weight: 500;
     font-size: 14px;
 }
@@ -55,15 +112,17 @@ body {
 .form-group input {
     width: 100%;
     padding: 12px 15px;
-    border: 2px solid #e1e1e1;
+    background-color: var(--input-bg);
+    color: var(--text-input);
+    border: 2px solid var(--border-input);
     border-radius: 5px;
     font-size: 16px;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, background-color 0.3s;
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--accent);
 }
 
 /* ===== Кнопки ===== */
@@ -71,20 +130,20 @@ body {
 .register-btn {
     width: 100%;
     padding: 14px;
-    background: #4CAF50;
+    background: var(--btn-primary);
     color: white;
     border: none;
     border-radius: 5px;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
 }
 
 .login-btn:hover,
 .register-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 5px 20px var(--btn-primary-shadow);
 }
 
 .login-btn:active,
@@ -100,36 +159,39 @@ body {
     display: none;
     font-size: 14px;
     text-align: center;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 .message.error {
-    background: #ffe6e6;
-    color: #d32f2f;
-    border: 1px solid #ffcdd2;
+    background: var(--msg-error-bg);
+    color: var(--msg-error-color);
+    border: 1px solid var(--msg-error-border);
 }
 
 .message.success {
-    background: #e6ffe6;
-    color: #388e3c;
-    border: 1px solid #c8e6c9;
+    background: var(--msg-success-bg);
+    color: var(--msg-success-color);
+    border: 1px solid var(--msg-success-border);
 }
 
 /* ===== Подвал ===== */
 .footer {
     margin-top: 25px;
     text-align: center;
-    color: #666;
+    color: var(--text-footer);
     font-size: 14px;
 }
 
 .footer a {
-    color: #667eea;
+    color: var(--footer-link);
     text-decoration: none;
     font-weight: 500;
+    transition: opacity 0.2s, color 0.3s;
 }
 
 .footer a:hover {
     text-decoration: underline;
+    opacity: 0.8;
 }
 
 /* ===== Адаптивность ===== */
@@ -138,7 +200,7 @@ body {
     .register-box {
         padding: 30px 20px;
     }
-    
+
     .login-box h2,
     .register-box h2 {
         font-size: 24px;

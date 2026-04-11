@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 2. Проверяем, админ ли
     try {
-        const response = await fetch('/api/me', {
+        const response = await fetch('/api/profile', {
             headers: {
                 'Authorization': 'Bearer ' + token
             }
@@ -61,6 +61,7 @@ async function loadStats(token) {
         document.getElementById('adminCount').textContent = stats.by_role.admin;
         document.getElementById('agentCount').textContent = stats.by_role.agent;
         document.getElementById('viewerCount').textContent = stats.by_role.viewer;
+        document.getElementById('directorCount').textContent = stats.by_role.director;
         
     } catch (error) {
         console.error('❌ Ошибка загрузки статистики:', error);
@@ -110,10 +111,11 @@ async function loadUsers(token) {
                         <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>Viewer</option>
                         <option value="agent" ${user.role === 'agent' ? 'selected' : ''}>Agent</option>
                         <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        <option value="admin" ${user.role === 'director' ? 'selected' : ''}>Director</option>
                     </select>
                 </td>
                 <td>
-                    <button class="btn btn-danger" onclick="deleteUser(${user.id}, '${user.username}')">
+                    <button class="btn btn-danger" onclick="deleteUser(${user.id})">
                         🗑️ Удалить
                     </button>
                 </td>
