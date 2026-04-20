@@ -6,11 +6,12 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database import get_db, Base, engine
-from models import User, UserRole
+from models import User, UserRole, Schedule, Vessel, ScheduleStatus, BerthNumber
 from pwdlib import PasswordHash
 from datetime import datetime, timedelta
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+from schemas import ScheduleCreate, ScheduleResponse
 
 '''
 ==== Конфигурация ====
@@ -113,6 +114,10 @@ async def dashboard_page():
 @app.get("/admin.html")
 async def admin_page():
     return FileResponse("static/admin.html")
+
+@app.get("/schedule.html")
+async def schedule_page():
+    return FileResponse("static/schedule.html")
 
 '''
  ==== API =====

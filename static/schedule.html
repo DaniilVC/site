@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>График швартовки</title>
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/schedule.css">
+</head>
+<body>
+    <div class="schedule-layout">
+        <!-- ЛЕВАЯ ПАНЕЛЬ: УПРАВЛЕНИЕ СУДАМИ -->
+        <aside class="sidebar">
+            <h2>🚢 Мой флот</h2>
+            <form id="addVesselForm" class="vessel-form">
+                <input type="text" id="vesselName" placeholder="Название судна" required>
+                <input type="text" id="vesselNumber" placeholder="Рег. номер" required>
+                <button type="submit" class="btn-add">➕ Добавить</button>
+            </form>
+            <ul id="vesselList" class="vessel-list">
+                <!-- Сюда JS подгрузит суда -->
+                <li class="empty-msg">Загрузка...</li>
+            </ul>
+        </aside>
+
+        <!-- ОСНОВНАЯ ЧАСТЬ: ТАБЛИЦЫ -->
+        <main class="main-content">
+            <div class="header">
+                <a href="/dashboard.html" class="back-link">← В личный кабинет</a>
+                <h1>📅 График швартовки</h1>
+            </div>
+
+            <!-- Контейнер для 4 таблиц (генерируется JS) -->
+            <div id="tablesContainer"></div>
+        </main>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО -->
+    <div id="bookingModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>📝 Бронирование ячейки</h3>
+            <form id="bookingForm">
+                <input type="hidden" id="m_date">
+                <input type="hidden" id="m_hour">
+                <input type="hidden" id="m_berth">
+
+                <label>Время (час):</label>
+                <input type="number" id="m_timeInput" min="0" max="23" required>
+
+                <label>Причал:</label>
+                <select id="m_berthSelect" required>
+                    <option value="Причал №1">Причал №1</option>
+                    <option value="Причал №2">Причал №2</option>
+                    <option value="Причал №3">Причал №3</option>
+                    <option value="Причал №4">Причал №4</option>
+                    <option value="Причал №5">Причал №5</option>
+                </select>
+
+                <label>Судно:</label>
+                <select id="m_vesselSelect" required>
+                    <!-- Заполнится JS -->
+                </select>
+
+                <label>Операция:</label>
+                <select id="m_status">
+                    <option value="Швартовка">Швартовка</option>
+                    <option value="Отшвартовка">Отшвартовка</option>
+                    <option value="Рейд">Рейд</option>
+                </select>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn-save">💾 Сохранить</button>
+                    <button type="button" id="closeModal" class="btn-cancel">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/schedule.js"></script>
+</body>
+</html>
