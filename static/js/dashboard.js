@@ -86,6 +86,11 @@ function logout() {
     window.location.href = '/login.html';
 }
 
+// ===== КНОПКА ПЕРЕХОДА В ГРАФИК ШВАРТОВКИ =====
+document.getElementById('scheduleBtn').addEventListener('click', () => {
+    window.location.href = '/schedule.html';
+});
+
 // ===== Вешаем обработчик на кнопку =====
 window.addEventListener('load', () => {
     const logoutBtn = document.getElementById('logoutBtn');

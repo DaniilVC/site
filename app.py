@@ -1,5 +1,5 @@
 # Понятное дело - библиотеки
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Query, WebSocket
 from config import Config
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -8,17 +8,18 @@ from sqlalchemy.orm import Session
 from database import get_db, Base, engine
 from models import User, UserRole, Schedule, Vessel, ScheduleStatus, BerthNumber
 from pwdlib import PasswordHash
-from datetime import datetime, timedelta
+from datetime import date, datetime
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
-from schemas import ScheduleCreate, ScheduleResponse
+from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse
+from typing import List
 
 '''
 ==== Конфигурация ====
 '''
 JWT_SECRET = Config.JWT_SECRET
 ALGORITHM = "HS256"
-
+app = FastAPI()
 security = HTTPBearer(auto_error=False)
 
 '''
@@ -88,11 +89,52 @@ def check_director_role(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
+
+'''
+==== WEBSOCKET (REAL-TIME) ====
+'''
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        """Отправляет сообщение всем подключенным клиентам"""
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except:
+                disconnected.append(connection)
+        # Удаляем отвалившиеся соединения
+        for conn in disconnected:
+            self.disconnect(conn)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/schedule")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Ждем сообщений, чтобы держать соединение открытым
+            data = await websocket.receive_text()
+    except:
+        manager.disconnect(websocket)
+
+
 '''
 ==== Начинка сайта ====
 '''
 
-app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")    
 
 @app.get("/")
@@ -257,11 +299,9 @@ async def change_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     
-    # Нельзя изменить роль самого себя
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Нельзя изменить свою роль")
     
-    # Проверяем, что роль существует
     new_role = role_data.get("role")
     if new_role not in ["viewer", "agent", "admin"]:
         raise HTTPException(status_code=400, detail="Неверная роль")
@@ -318,3 +358,98 @@ async def get_stats(
         }
     }
 
+
+@app.get("/api/vessels", response_model=list[VesselResponse])
+def get_my_vessels(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Возвращает список судов, принадлежащих текущему агенту"""
+    vessels = db.query(Vessel).filter(Vessel.user_id == current_user.id).all()
+    return vessels
+
+
+@app.post("/api/vessels", response_model=VesselResponse)
+def create_vessel(
+    data: VesselCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Добавляет новое судно в личный список агента"""
+    exists = db.query(Vessel).filter(
+        Vessel.user_id == current_user.id,
+        Vessel.vessel_number == data.vessel_number
+    ).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="Судно с таким рег. номером уже есть в вашем списке")
+
+    new_vessel = Vessel(**data.model_dump(), user_id=current_user.id)
+    db.add(new_vessel)
+    db.commit()
+    db.refresh(new_vessel)
+    return new_vessel
+
+@app.get("/api/schedule", response_model=list[ScheduleResponse])
+def get_schedule(
+    date: date = Query(..., description="Дата в формате YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    results = db.query(Schedule, Vessel.vessel_name).join(
+        Vessel, Schedule.vessel_id == Vessel.id
+    ).filter(Schedule.date == date).all()
+
+    return [
+        {
+            "id": s.id,
+            "vessel_id": s.vessel_id,
+            "date": s.date, 
+            "hour": s.hour,
+            "berth": s.berth,
+            "status": s.status,
+            "owner_id": s.user_id,
+            "vessel_name": v_name,
+            "created_at": s.created_at
+        }
+        for s, v_name in results
+    ]
+
+# 👇 ИЗМЕНЕНИЕ: async def и broadcast
+@app.post("/api/schedule")
+async def create_schedule_entry(
+    data: ScheduleCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role.value == "viewer":
+        raise HTTPException(status_code=403, detail="Доступ запрещён: требуется роль агента или выше")
+
+    vessel = db.query(Vessel).filter(
+        Vessel.id == data.vessel_id,
+        Vessel.user_id == current_user.id
+    ).first()
+    if not vessel:
+        raise HTTPException(status_code=403, detail="Судно не найдено или не принадлежит вам")
+
+    conflict = db.query(Schedule).filter(
+        Schedule.date == data.date,
+        Schedule.hour == data.hour,
+        Schedule.berth == data.berth
+    ).first()
+    
+    if conflict:
+        occupied_vessel = db.query(Vessel).filter(Vessel.id == conflict.vessel_id).first()
+        raise HTTPException(
+            status_code=409,
+            detail=f"Конфликт! {data.berth} в {data.hour}:00 уже занят судном '{occupied_vessel.vessel_name if occupied_vessel else 'Неизвестно'}'"
+        )
+
+    new_entry = Schedule(**data.model_dump(), user_id=current_user.id)
+    db.add(new_entry)
+    db.commit()
+    db.refresh(new_entry)
+    
+    # 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ КЛИЕНТАМ
+    await manager.broadcast({"type": "schedule_updated", "date": str(data.date)})
+    
+    return {"message": "Успешно забронировано", "id": new_entry.id}

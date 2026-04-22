@@ -16,7 +16,6 @@
 
 .dashboard-box h2 {
     margin-bottom: 30px;
-    /* ✅ Заменено: #333 -> var(--text-main) */
     color: var(--text-main);
     font-size: 28px;
 }
@@ -37,13 +36,32 @@
     transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
 }
 
-.admin-btn:hover {
+.admin-btn:hover{
     transform: translateY(-2px);
-    /* ✅ Заменено: rgba -> var(--accent-shadow) */
     box-shadow: 0 5px 20px var(--accent-shadow);
 }
 
-/* 🔥 Кнопка выхода */
+/* Кнопка для перехода в расписание */
+.schedule-btn {
+    display: inline-block;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+}
+
+.schedule-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px var(--accent-shadow);
+}
+/* Кнопка выхода */
 .logout-btn {
     width: 100%;
     padding: 14px;
@@ -60,7 +78,6 @@
 
 .logout-btn:hover {
     transform: translateY(-2px);
-    /* ✅ Заменено: rgba -> var(--danger-shadow) */
     box-shadow: 0 5px 20px var(--danger-shadow);
 }
 

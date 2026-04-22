@@ -60,8 +60,8 @@ class Schedule(Base):
     vessel_id = Column(Integer, ForeignKey("vessels.id", ondelete="CASCADE"), nullable=False)
     date = Column(Date, nullable=False, index=True)
     hour = Column(Integer, nullable=False, index=True)
-    status = Column(Enum(ScheduleStatus), default=ScheduleStatus.unset, nullable=False)
-    berth = Column(Enum(BerthNumber), default=BerthNumber.unset, nullable=False)
+    status = Column(Enum(ScheduleStatus, values_callable=lambda obj: [e.value for e in obj]), default=ScheduleStatus.unset, nullable=False)
+    berth = Column(Enum(BerthNumber, values_callable=lambda obj: [e.value for e in obj]), default=BerthNumber.unset, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     user = relationship("User", back_populates="schedule_entries")
