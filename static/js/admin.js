@@ -103,15 +103,15 @@ async function loadUsers(token) {
                 <td>${user.username}</td>
                 <td>${user.email}</td>
                 <td>${user.telephone_number || '-'}</td>
-                <td>${user.company || '-'}</td>
+                <td>${user.company?.name || '-'}</td>
                 <td>
                     <span class="role-badge ${roleClass}">${user.role}</span>
                     <select onchange="changeRole(${user.id}, this.value)" 
                             style="margin-left: 10px;">
                         <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>Viewer</option>
                         <option value="agent" ${user.role === 'agent' ? 'selected' : ''}>Agent</option>
-                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
                         <option value="admin" ${user.role === 'director' ? 'selected' : ''}>Director</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>                        
                     </select>
                 </td>
                 <td>

@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('email').textContent = user.email;
         document.getElementById('role').textContent = user.role;
         document.getElementById('telephone_number').textContent = user.telephone_number || 'Не указан';
-        document.getElementById('company').textContent = user.company || 'Не указана';
+        document.getElementById('company').textContent = user.company?.name || 'Не указана';
         
         // 🔥 4. Показываем кнопку админки, если роль admin
         if (user.role === 'admin') {
