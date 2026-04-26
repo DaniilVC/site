@@ -5,10 +5,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Определяем роль и права
     const payload = JSON.parse(atob(token.split('.')[1]));
     const userRole = payload.role;
+    const currentUserId = payload.user_id; // ✅ ID текущего пользователя
     const canEdit = ['agent', 'director', 'admin'].includes(userRole);
 
     const tablesContainer = document.getElementById('tablesContainer');
     const modal = document.getElementById('bookingModal');
+    const viewModal = document.getElementById('viewModal'); // ✅ Модальное окно просмотра
     const vesselList = document.getElementById('vesselList');
     const vesselSelect = document.getElementById('m_vesselSelect');
 
@@ -27,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentServerDate = null;
     let dates = [];
     let isTodayPartiallyLocked = false;
+    let currentViewEntryId = null; // ✅ ID записи в модальном окне просмотра
 
     // Генерация 4 дней от базовой даты
     function generateDates(baseDateStr) {
@@ -43,14 +46,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ===== СИНХРОНИЗАЦИЯ С СЕРВЕРОМ (время + дата) =====
     async function syncServerTime() {
         try {
-            // 🔥 t=${Date.now()} убивает кэш браузера
             const res = await fetch(`/api/server-time?t=${Date.now()}`);
             const data = await res.json();
             
             const serverDate = data.date;
             const serverHour = data.hour;
 
-            // 1️⃣ ПРОВЕРКА ДАТЫ — если сменилась, перегенерируем всё
             if (currentServerDate !== serverDate) {
                 console.log(`📅 Дата сменилась: ${currentServerDate || 'null'} → ${serverDate}`);
                 currentServerDate = serverDate;
@@ -60,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // 2️⃣ ПРОВЕРКА ВРЕМЕНИ — блокировка после 15:00
             const wasLocked = isTodayPartiallyLocked;
             isTodayPartiallyLocked = serverHour >= 15;
             
@@ -70,7 +70,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.error('⚠️ Ошибка синхронизации:', e);
-            // Fallback на локальное время
             const now = new Date();
             const localDate = now.toISOString().split('T')[0];
             if (currentServerDate !== localDate) {
@@ -148,7 +147,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (let b = 1; b <= 5; b++) {
                     const td = document.createElement('td');
                     
-                    // 🔥 ЛОГИКА БЛОКИРОВКИ:
                     const isSlotLocked = isToday && isTodayPartiallyLocked && slot.hour < 17;
                     const isReadOnly = isSlotLocked || !canEdit;
                     
@@ -173,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ===== ИНИЦИАЛИЗАЦИЯ =====
     await syncServerTime();
-    setInterval(syncServerTime, 10000); // Проверка каждые 10 секунд
+    setInterval(syncServerTime, 10000);
 
     // ===== ЗАГРУЗКА СУДОВ =====
     loadVessels();
@@ -182,9 +180,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         addForm.style.display = 'none';
     }
 
-    // ===== ОБРАБОТЧИКИ =====
-    document.getElementById('closeModal').addEventListener('click', () => modal.classList.add('hidden'));
-    window.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+    // ===== ОБРАБОТЧИКИ МОДАЛЬНОГО ОКНА БРОНИРОВАНИЯ =====
+    document.getElementById('closeModal')?.addEventListener('click', () => modal.classList.add('hidden'));
+    window.addEventListener('click', (e) => { 
+        if (e.target === modal) modal.classList.add('hidden');
+        if (e.target === viewModal) viewModal.classList.add('hidden'); // ✅ Закрытие окна просмотра
+    });
 
     document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -196,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             date: document.getElementById('m_date').value,
             hour: parseInt(document.getElementById('m_timeSelect').value),
             berth: document.getElementById('m_berthSelect').value,
-            vessel_id: parseInt(document.getElementById('m_vesselSelect').value),
+            vessel_id: vesselId,
             status: document.getElementById('m_status').value
         };
         
@@ -234,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // ===== ДОБАВЛЕНИЕ СУДНА =====
     document.getElementById('addVesselForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('vesselName').value;
@@ -257,6 +259,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // ===== УДАЛЕНИЕ СУДНА (делегирование) =====
+    vesselList.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-del');
+        if (!btn) return;
+
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+
+        if (!confirm(`Удалить судно "${name}"?`)) return;
+
+        try {
+            const res = await fetch(`/api/vessels/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                loadVessels(); 
+            } else {
+                const err = await res.json();
+                alert(err.detail || 'Не удалось удалить судно');
+            }
+        } catch (err) {
+            alert('Ошибка сети');
+            console.error('❌ Network error:', err);
+        }
+    });
+
     // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 
     function openModal(date, hour, berth) {
@@ -266,6 +296,82 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('m_timeSelect').value = hour;
         modal.classList.remove('hidden');
     }
+
+    // ✅ ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ПРОСМОТРА
+    async function openViewModal(entryId) {
+        try {
+            const res = await fetch(`/api/schedule/${entryId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!res.ok) {
+                alert('Не удалось загрузить информацию');
+                return;
+            }
+            
+            const entry = await res.json();
+            currentViewEntryId = entryId;
+            
+            // Заполняем данные
+            document.getElementById('view_vessel_name').textContent = entry.vessel_name;
+            document.getElementById('view_vessel_number').textContent = entry.vessel_number || 'Не указан';
+            document.getElementById('view_date').textContent = entry.date;
+            document.getElementById('view_time').textContent = `${entry.hour}:00`;
+            document.getElementById('view_berth').textContent = entry.berth;
+            document.getElementById('view_status').textContent = entry.status;
+            document.getElementById('view_owner').textContent = entry.owner_username;
+            document.getElementById('view_company').textContent = entry.owner_company || 'Без компании';
+            
+            // Показываем кнопки только владельцу
+            const isOwner = entry.owner_id === currentUserId;
+            document.getElementById('btn_delete_entry').style.display = isOwner ? 'inline-block' : 'none';
+            document.getElementById('btn_edit_entry').style.display = isOwner ? 'inline-block' : 'none';
+            document.getElementById('btn_delete_entry').dataset.id = entryId;
+            document.getElementById('btn_edit_entry').dataset.id = entryId;
+            
+            viewModal.classList.remove('hidden');
+        } catch (err) {
+            console.error('Ошибка загрузки:', err);
+            alert('Ошибка сети');
+        }
+    }
+
+    // ✅ ОБРАБОТЧИКИ МОДАЛЬНОГО ОКНА ПРОСМОТРА
+    document.getElementById('closeViewModal')?.addEventListener('click', () => {
+        viewModal?.classList.add('hidden');
+    });
+
+    document.getElementById('btn_delete_entry')?.addEventListener('click', async (e) => {
+        if (!confirm('Удалить это бронирование?')) return;
+        
+        const id = e.target.dataset.id;
+        try {
+            const res = await fetch(`/api/schedule/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                viewModal?.classList.add('hidden');
+                const firstCell = document.querySelector('.berth-cell');
+                if (firstCell) {
+                    loadScheduleData(firstCell.dataset.date);
+                }
+            } else {
+                const err = await res.json();
+                alert(err.detail || 'Не удалось удалить');
+            }
+        } catch (err) {
+            alert('Ошибка сети');
+        }
+    });
+
+    document.getElementById('btn_edit_entry')?.addEventListener('click', (e) => {
+        // Пока просто закрываем просмотр и открываем бронирование
+        // В будущем можно заполнить форму данными записи
+        viewModal?.classList.add('hidden');
+        alert('Редактирование будет доступно в следующей версии');
+    });
 
     async function loadVessels() {
         try {
@@ -299,33 +405,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('Ошибка загрузки судов:', e); 
         }
     }
-
-    vesselList.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.btn-del');
-        if (!btn) return;
-
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-
-        if (!confirm(`Удалить судно "${name}"?`)) return;
-
-        try {
-            const res = await fetch(`/api/vessels/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                loadVessels(); 
-            } else {
-                const err = await res.json();
-                alert(err.detail || 'Не удалось удалить судно');
-            }
-        } catch (err) {
-            alert('Ошибка сети');
-            console.error('❌ Network error:', err);
-        }
-    });
 
     async function loadScheduleData(dateStr) {
         try {
@@ -361,10 +440,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (cell) {
                     cell.textContent = entry.vessel_name || 'Занято';
                     cell.classList.add('booked');
+                    cell.dataset.status = entry.status;
+                    cell.dataset.entryId = entry.id;
+                    
+                    // ✅ Клик по занятой ячейке → просмотр (вместо создания)
+                    cell.onclick = (e) => {
+                        e.stopPropagation();
+                        openViewModal(entry.id);
+                    };
+                    
+                    cell.style.cursor = 'pointer';
                 }
             });
-        } catch (e) { 
-            console.error('Ошибка загрузки расписания:', e); 
+        } catch (err) {
+            console.error('Ошибка загрузки расписания:', err);
         }
     }
 

@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
-from datetime import date as dt, datetime  
+from datetime import date as dt, datetime
 from typing import Optional
 
-# ==========================================
-# 1. СХЕМЫ ДЛЯ СУДОВ (Vessels)
-# ==========================================
+'''
+===== Схемы для судов (Vessel) =====
+'''
 
 class VesselCreate(BaseModel):
     vessel_name: str = Field(..., min_length=2, max_length=100)
@@ -14,35 +14,77 @@ class VesselResponse(BaseModel):
     id: int
     vessel_name: str
     vessel_number: str
+    owner_id: int  # Добавил ID владельца для удобства
 
     class Config:
         from_attributes = True
 
+'''
+===== Схемы для компаний (Company) =====
+'''
 
-# ==========================================
-# 2. СХЕМЫ ДЛЯ РАСПИСАНИЯ (Schedule)
-# ==========================================
+class CompanyResponse(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+class CompanyCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+
+
+'''
+===== Схемы для расписания (Schedule) =====
+'''
 
 class ScheduleCreate(BaseModel):
     vessel_id: int = Field(..., ge=1)
-    date: dt = Field(..., description="Дата YYYY-MM-DD")  # ✅ Было target_date
+    date: dt = Field(..., description="Дата YYYY-MM-DD")
     hour: int = Field(..., ge=0, le=23)
     berth: str = Field(...)
     status: str = Field(...)
 
-    class Config:
-        from_attributes = True
-
 class ScheduleResponse(BaseModel):
+    """Краткая информация для ячеек таблицы"""
     id: int
     vessel_id: int
-    date: dt  
+    date: dt
     hour: int
     berth: str
     status: str
     owner_id: int
+    
+    # ✅ Новые поля для отображения
     vessel_name: Optional[str] = None
-    created_at: Optional[datetime] = None  
+    vessel_number: Optional[str] = None
+    owner_username: Optional[str] = None
+    owner_company: Optional[str] = None
+    
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class ScheduleDetailResponse(BaseModel):
+    """Полная информация для модального окна просмотра"""
+    id: int
+    vessel_id: int
+    date: dt
+    hour: int
+    berth: str
+    status: str
+    
+    # Детали судна
+    vessel_name: str
+    vessel_number: Optional[str] = None
+    
+    # Детали владельца
+    owner_id: int
+    owner_username: str
+    owner_company: Optional[str] = None
+    
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -1,3 +1,4 @@
+/* ===== ОБЩИЙ ЛЕЙАУТ ===== */
 .schedule-layout {
     display: flex;
     gap: 20px;
@@ -9,31 +10,37 @@
 /* ===== САЙДБАР ===== */
 .sidebar {
     width: 250px;
-    background: var(--bg-card);
+    background: #ffffff;
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 10px 40px var(--shadow);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     height: fit-content;
+    border: 2px solid #e2e8f0;
 }
 
 .vessel-form input {
     width: 100%;
     margin-bottom: 10px;
-    padding: 8px;
+    padding: 10px;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
 }
 
 .btn-add {
     width: 100%;
-    background: var(--accent);
+    background: #4f46e5;
     color: white;
     border: none;
-    padding: 8px;
-    border-radius: 5px;
+    padding: 10px;
+    border-radius: 6px;
     cursor: pointer;
-    font-weight: 600;
-    transition: opacity 0.2s;
+    font-weight: 700;
+    font-size: 14px;
+    transition: background 0.2s;
 }
-.btn-add:hover { opacity: 0.9; }
+.btn-add:hover { background: #4338ca; }
 
 .vessel-list {
     list-style: none;
@@ -44,12 +51,15 @@
 }
 
 .vessel-list li {
-    background: var(--bg-body);
-    padding: 10px;
-    margin-bottom: 6px;
-    border-radius: 6px;
+    background: #f8fafc;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
     font-size: 14px;
-    border-left: 3px solid var(--accent);
+    border-left: 4px solid #4f46e5;
+    border: 2px solid #e2e8f0;
+    font-weight: 500;
+    color: #0f172a;
 }
 
 /* ===== ОСНОВНОЙ КОНТЕНТ ===== */
@@ -57,171 +67,212 @@
 .header { margin-bottom: 20px; }
 
 .schedule-grid {
-    background: var(--bg-card);
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 10px 40px var(--shadow);
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     margin-bottom: 30px;
     overflow-x: auto;
+    border: 2px solid #e2e8f0;
 }
 
 .schedule-grid h2 {
     margin: 0 0 15px 0;
     font-size: 18px;
     padding-bottom: 10px;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 3px solid #cbd5e1;
+    color: #0f172a;
+    font-weight: 700;
 }
 
-/* ===== ТАБЛИЦА — СЕТКА (КОНТРАСТНАЯ) ===== */
+/* ===== ТАБЛИЦА — ЖЁСТКИЙ КОНТРАСТ (СВЕТЛАЯ ТЕМА) ===== */
 .s-table {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
+    border-collapse: collapse !important;
+    font-size: 14px;
     table-layout: fixed;
-    border: 2px solid #cbd5e1; /* 🔥 Жирная внешняя рамка */
+    border: 3px solid #0f172a; /* Жирная внешняя рамка */
+    background: #ffffff;
 }
 
-/* Заголовки */
+/* Заголовки — ТЁМНЫЕ И ЧЁТКИЕ */
 .s-table thead {
-    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-    color: white;
+    background: #1e293b;
+    color: #ffffff;
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
 .s-table th {
-    padding: 12px 6px;
-    font-weight: 700;
+    padding: 12px 8px;
+    font-weight: 800;
     text-transform: uppercase;
     font-size: 12px;
-    letter-spacing: 0.3px;
-    border: 1px solid rgba(255,255,255,0.3);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    letter-spacing: 0.5px;
+    border: 2px solid #334155; /* Сплошные границы */
+    text-align: center;
 }
 
-/* Ячейки — жёсткий контраст для светлой темы */
+/* Все ячейки — СПЛОШНЫЕ ГРАНИЦЫ, ТЁМНЫЙ ТЕКСТ */
 .s-table td {
-    border: 1px solid #cbd5e1; /* 🔥 Заметная серая сетка */
-    padding: 6px 4px;
+    border: 2px solid #cbd5e1; /* Заметная сетка */
+    padding: 8px 4px;
     text-align: center;
     vertical-align: middle;
-    transition: all 0.15s ease;
-    color: #0f172a; /* 🔥 Почти чёрный текст */
+    color: #0f172a; /* Почти чёрный текст */
+    background: #ffffff;
+    font-weight: 600;
 }
 
-/* Колонка времени */
+/* ===== КОЛОНКА ВРЕМЕНИ (ФИКС КОНТРАСТА) ===== */
 .s-table .hour-cell {
-    background: #f8fafc; /* 🔥 Светло-серый фон */
+    background: #e2e8f0;      /* Светло-серый фон */
+    color: #0f172a;           /* Тёмно-синий текст (высокий контраст) */
     font-weight: 800;
-    color: #4f46e5; /* 🔥 Яркий акцент */
-    width: 65px;
-    border-right: 2px solid #94a3b8; /* 🔥 Жирный разделитель */
+    width: 70px;
+    border-right: 3px solid #94a3b8;
     position: sticky;
     left: 0;
     z-index: 5;
 }
 
-/* Зебра — теперь реально видно */
-.s-table tbody tr:nth-child(even) { background: #f1f5f9; }
-.s-table tbody tr:nth-child(odd) { background: #ffffff; }
+/* Убираем "зебру" для колонки времени, чтобы фон был одинаковым */
+.s-table tbody tr:nth-child(even) td.hour-cell,
+.s-table tbody tr:nth-child(odd) td.hour-cell {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
 
 /* ===== ЯЧЕЙКИ-СЛОТЫ ===== */
 .s-table .berth-cell {
     cursor: pointer;
-    height: 36px;
+    height: 40px;
     position: relative;
     min-width: 80px;
     background: #ffffff;
+    transition: background 0.15s;
 }
 
 /* Ховер */
 .s-table .berth-cell:hover:not(.locked):not(.booked) {
-    background: #e0e7ff;
-    outline: 2px solid #4f46e5;
+    background: #dbeafe;
+    outline: 2px solid #2563eb;
     outline-offset: -2px;
     z-index: 1;
 }
 
-/* Занятая ячейка — насыщенные градиенты */
+/* Занятая ячейка */
 .s-table .berth-cell.booked {
     background: linear-gradient(135deg, #4f46e5, #3730a3);
     color: white;
     font-weight: 700;
     cursor: default;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
-    border: 1px solid #312e81;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    border: 2px solid #312e81;
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
-/* 🔥 Цветовая кодировка статусов (ярко и контрастно) */
+/* Статусы */
 .s-table .berth-cell.booked[data-status="Швартовка"] { 
     background: linear-gradient(135deg, #10b981, #047857); 
-    border: 1px solid #065f46;
+    border-color: #065f46; 
 }
 .s-table .berth-cell.booked[data-status="Отшвартовка"] { 
     background: linear-gradient(135deg, #f59e0b, #b45309); 
-    border: 1px solid #92400e;
+    border-color: #92400e; 
 }
 .s-table .berth-cell.booked[data-status="Рейд"] { 
     background: linear-gradient(135deg, #6366f1, #4338ca); 
-    border: 1px solid #3730a3;
+    border-color: #3730a3; 
 }
 
 /* Галочка */
 .berth-cell.booked::after {
     content: "✓";
     position: absolute;
-    top: 3px;
-    right: 5px;
+    top: 2px;
+    right: 4px;
     font-size: 11px;
     opacity: 1;
-    color: rgba(255,255,255,0.95);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    color: rgba(255,255,255,0.9);
 }
 
-/* Заблокированная (сегодня / viewer) */
+/* Заблокированная (время/роль) */
 .s-table .berth-cell.locked {
-    background: #f8fafc;
-    color: #94a3b8;
+    background: #f1f5f9;
+    color: #475569; /* Тёмно-серый, ЧИТАЕТСЯ */
     cursor: not-allowed;
-    border: 1px dashed #cbd5e1;
+    border: 2px dashed #94a3b8;
+    font-weight: 600;
+    opacity: 1; /* Убрал бледность */
 }
 .s-table .berth-cell.locked:hover {
-    background: #f8fafc;
+    background: #f1f5f9;
     outline: none;
+}
+
+/* Иконка замка/часов */
+.s-table .berth-cell.locked::before {
+    content: "⏳";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Тултип для заблокированных */
+.s-table .berth-cell.locked:hover::after {
+    content: "Доступно с 17:00";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 20;
+    font-weight: 600;
+    pointer-events: none;
 }
 
 /* ===== МОДАЛЬНОЕ ОКНО ===== */
 .modal {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(3px);
 }
 .modal.hidden { display: none; }
 
 .modal-content {
-    background: var(--bg-card);
+    background: #ffffff;
     padding: 25px;
     border-radius: 12px;
-    width: 350px;
+    width: 380px;
     max-width: 90%;
-    box-shadow: 0 20px 60px var(--shadow);
-    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    border: 2px solid #e2e8f0;
 }
 
-.modal-content h3 { margin: 0 0 20px 0; text-align: center; }
+.modal-content h3 { margin: 0 0 20px 0; text-align: center; color: #0f172a; }
 
 .modal-content label {
     display: block;
-    margin: 12px 0 5px;
+    margin: 12px 0 6px;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
+    color: #334155;
 }
 
 .modal-content input, 
@@ -229,17 +280,19 @@
     width: 100%;
     padding: 10px;
     border-radius: 6px;
-    border: 1px solid var(--input-border);
-    background: var(--input-bg);
-    color: var(--input-text);
+    border: 2px solid #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
     font-size: 14px;
     box-sizing: border-box;
+    font-weight: 500;
 }
 .modal-content input:focus,
 .modal-content select:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    border-color: #4f46e5;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .modal-actions {
@@ -254,159 +307,105 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14px;
     transition: transform 0.15s, box-shadow 0.2s;
 }
 
-.btn-save {
-    background: var(--accent);
-    color: white;
-}
-.btn-save:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--accent-shadow);
+.btn-save { background: #4f46e5; color: white; }
+.btn-save:hover { background: #4338ca; transform: translateY(-1px); }
+
+.btn-cancel { background: #ef4444; color: white; }
+.btn-cancel:hover { background: #dc2626; transform: translateY(-1px); }
+
+/* ===== МОДАЛЬНОЕ ОКНО ПРОСМОТРА ===== */
+.info-block {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
 }
 
-.btn-cancel {
-    background: var(--danger);
-    color: white;
-}
-.btn-cancel:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--danger-shadow);
-}
-
-.vessel-item {
+.info-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    background: var(--bg-body);
-    margin-bottom: 8px;
-    border-radius: 8px;
-    border-left: 3px solid var(--accent);
-    font-size: 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid #cbd5e1;
+}
+.info-row:last-child {
+    border-bottom: none;
 }
 
-/* Кнопка удаления */
-.btn-delete-vessel {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 18px;
-    opacity: 0.5;
-    transition: all 0.2s;
-    padding: 4px 8px;
-    border-radius: 6px;
-}
-.btn-delete-vessel:hover {
-    opacity: 1;
-    background: rgba(239, 68, 68, 0.1);
-    transform: scale(1.1);
+.info-row .label {
+    font-weight: 700;
+    color: #475569;
 }
 
-/* ===== РАЗНЫЕ ТИПЫ БЛОКИРОВКИ ===== */
-
-/* Заблокировано по времени (после 15:00, слоты < 17:00) */
-.s-table .berth-cell.locked[data-date]:not([data-status])::before {
-    content: "⏳";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 14px;
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-/* Подсказка при наведении на временную блокировку */
-.s-table .berth-cell.locked[data-date]:not([data-status]):hover::after {
-    content: "Доступно с 17:00";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1e293b;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    white-space: nowrap;
-    z-index: 20;
-    pointer-events: none;
-}
-
-/* Заблокировано по роли (viewer) — более бледный вид */
-.s-table .berth-cell.locked.viewer-only {
-    background: #f1f5f9;
-    color: #cbd5e1;
-    cursor: not-allowed;
-}
-
-/* Анимация появления блокировки */
-.s-table .berth-cell.locked {
-    animation: fadeLock 0.3s ease;
-}
-
-@keyframes fadeLock {
-    from { opacity: 1; }
-    to { opacity: 0.5; }
-}
-
-@keyframes slideIn {
-    from { transform: translateX(400px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(400px); opacity: 0; }
+.info-row .value {
+    font-weight: 600;
+    color: #0f172a;
 }
 
 /* ===== АДАПТИВ ===== */
 @media (max-width: 1024px) {
     .schedule-layout { flex-direction: column; }
     .sidebar { width: 100%; }
-    
-    .s-table { font-size: 12px; }
-    .s-table th, .s-table td { padding: 5px 3px; }
-    .hour-cell { width: 55px; font-size: 12px; }
-    .berth-cell { height: 32px; min-width: 60px; }
+    .s-table { font-size: 13px; }
+    .s-table th, .s-table td { padding: 6px 4px; }
+    .hour-cell { width: 60px; }
+    .berth-cell { height: 36px; min-width: 70px; }
 }
 
 @media (max-width: 768px) {
-    .schedule-grid { padding: 10px; }
-    .s-table { font-size: 11px; }
-    .hour-cell { width: 50px; }
-    .berth-cell { height: 28px; }
-    
+    .schedule-grid { padding: 12px; }
+    .s-table { font-size: 12px; }
+    .hour-cell { width: 55px; }
+    .berth-cell { height: 32px; }
     .modal-content { width: 95%; padding: 20px; }
 }
 
-/* ===== ТЁМНАЯ ТЕМА (переопределяет светлые фиксы) ===== */
+/* ===== ТЁМНАЯ ТЕМА ===== */
 @media (prefers-color-scheme: dark) {
-    .s-table { 
-        border-color: #374151; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4); 
+    .sidebar, .schedule-grid, .modal-content {
+        background: #1e293b;
+        border-color: #334155;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    .s-table td { 
-        border-color: #4b5563; 
-        color: #f3f4f6; 
-    }
-    .s-table .hour-cell { 
-        background: #111827; 
-        color: #818cf8; 
-        border-right-color: #374151; 
-    }
-    .s-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
-    .s-table tbody tr:nth-child(odd) { background: transparent; }
     
-    .s-table .berth-cell { background: #1f2937; }
-    .s-table .berth-cell:hover:not(.locked):not(.booked) { background: #312e81; }
-    .s-table .berth-cell.locked { 
-        background: #111827; 
-        color: #6b7280; 
-        border-color: #374151; 
-        opacity: 0.7; 
+    .vessel-list li { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+    .vessel-form input { background: #0f172a; border-color: #475563; color: #f1f5f9; }
+    
+    .schedule-grid h2 { color: #f1f5f9; border-bottom-color: #475563; }
+    
+    .s-table { border-color: #475563; background: #1e293b; }
+    .s-table th { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+    .s-table td { border-color: #334155; color: #f1f5f9; background: #1e293b; }
+    .s-table .hour-cell {
+        background: #0f172a;
+        color: #ffffff;           /* Чистый белый — идеально читается */
+        border-right-color: #475563;
     }
+    .s-table tbody tr:nth-child(even) td.hour-cell,
+    .s-table tbody tr:nth-child(odd) td.hour-cell {
+        background: #0f172a !important;
+        color: #ffffff !important;
+    }
+    .s-table .berth-cell { background: #1e293b; }
+    .s-table .berth-cell:hover:not(.locked):not(.booked) { background: #334155; }
+    .s-table .berth-cell.locked { background: #0f172a; color: #64748b; border-color: #475563; }
+    
+    .modal-content label { color: #cbd5e1; }
+    .modal-content input, .modal-content select { background: #0f172a; border-color: #475563; color: #f1f5f9; }
+    .modal-content input:focus, .modal-content select:focus { background: #1e293b; border-color: #6366f1; }
+    
+    .btn-save { background: #6366f1; }
+    .btn-cancel { background: #ef4444; }
+
+    .info-block {
+        background: #0f172a;
+        border-color: #334155;
+    }
+    .info-row .label { color: #94a3b8; }
+    .info-row .value { color: #f1f5f9; }
 }
