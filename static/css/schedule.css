@@ -277,6 +277,92 @@
     box-shadow: 0 4px 12px var(--danger-shadow);
 }
 
+.vessel-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-body);
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
+    font-size: 14px;
+}
+
+/* Кнопка удаления */
+.btn-delete-vessel {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    opacity: 0.5;
+    transition: all 0.2s;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+.btn-delete-vessel:hover {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+/* ===== РАЗНЫЕ ТИПЫ БЛОКИРОВКИ ===== */
+
+/* Заблокировано по времени (после 15:00, слоты < 17:00) */
+.s-table .berth-cell.locked[data-date]:not([data-status])::before {
+    content: "⏳";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Подсказка при наведении на временную блокировку */
+.s-table .berth-cell.locked[data-date]:not([data-status]):hover::after {
+    content: "Доступно с 17:00";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 20;
+    pointer-events: none;
+}
+
+/* Заблокировано по роли (viewer) — более бледный вид */
+.s-table .berth-cell.locked.viewer-only {
+    background: #f1f5f9;
+    color: #cbd5e1;
+    cursor: not-allowed;
+}
+
+/* Анимация появления блокировки */
+.s-table .berth-cell.locked {
+    animation: fadeLock 0.3s ease;
+}
+
+@keyframes fadeLock {
+    from { opacity: 1; }
+    to { opacity: 0.5; }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(400px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(400px); opacity: 0; }
+}
+
 /* ===== АДАПТИВ ===== */
 @media (max-width: 1024px) {
     .schedule-layout { flex-direction: column; }

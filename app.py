@@ -13,13 +13,16 @@ import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse
 from typing import List
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from contextlib import asynccontextmanager
 
 '''
 ==== Конфигурация ====
 '''
 JWT_SECRET = Config.JWT_SECRET
 ALGORITHM = "HS256"
-app = FastAPI()
+scheduler = AsyncIOScheduler()
 security = HTTPBearer(auto_error=False)
 
 '''
@@ -89,6 +92,42 @@ def check_director_role(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
+'''
+==== Планировщик задач (для очистки старых записей) ====
+'''
+
+def cleanup_old_schedules():
+    db = next(get_db())
+    _n = 0
+    try: 
+        today = date.today()
+        _n = db.query(Schedule).filter(Schedule.date < today).delete(synchronize_session=False)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Troubles with cleaning *sweep-sweep*: {e}")
+    finally:
+        print(f"Cleaning... Deleted {_n} old entries")
+        db.close()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler.add_job(
+        cleanup_old_schedules,
+        CronTrigger(hour=0, minute=0))    
+    scheduler.add_job(
+        lambda: print(f"Scheduler is alive! Time: {datetime.now()}"),
+        CronTrigger(hour=0, minute=0)
+    )
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+'''
+==== Инициализация FastAPI ====
+'''
+
+app = FastAPI(lifespan=lifespan)
 
 '''
 ==== WEBSOCKET (REAL-TIME) ====
@@ -264,7 +303,7 @@ async def dashboard(current_user: User = Depends(get_current_user)):
 '''
 ==== Админка ====
 '''
-
+# Работа с пользователями
 @app.get("/api/admin/users")
 async def get_all_users(
     current_user: User = Depends(check_admin_role),
@@ -358,6 +397,9 @@ async def get_stats(
         }
     }
 
+'''
+==== Функции для агентов ====
+'''
 
 @app.get("/api/vessels", response_model=list[VesselResponse])
 def get_my_vessels(
@@ -389,6 +431,32 @@ def create_vessel(
     db.refresh(new_vessel)
     return new_vessel
 
+@app.delete("/api/vessels/{vessel_id}")
+def delete_vessel(
+    vessel_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Удаляет судно из личного списка агента (только если оно не забронировано)"""
+    vessel = db.query(Vessel).filter(
+        Vessel.id == vessel_id,
+        Vessel.user_id == current_user.id
+    ).first()
+    if not vessel:
+        raise HTTPException(status_code=404, detail="Судно не найдено в вашем списке")
+
+    has_schedule = db.query(Schedule).filter(Schedule.vessel_id == vessel_id, Schedule.date >= date.today()).first()
+    if has_schedule:
+        raise HTTPException(status_code=400, detail="Нельзя удалить судно, которое есть в расписании")
+
+    db.delete(vessel)
+    db.commit()
+    return {"message": "Судно удалено"}
+
+'''
+==== Расписание ====
+'''
+
 @app.get("/api/schedule", response_model=list[ScheduleResponse])
 def get_schedule(
     date: date = Query(..., description="Дата в формате YYYY-MM-DD"),
@@ -414,7 +482,6 @@ def get_schedule(
         for s, v_name in results
     ]
 
-# 👇 ИЗМЕНЕНИЕ: async def и broadcast
 @app.post("/api/schedule")
 async def create_schedule_entry(
     data: ScheduleCreate,
@@ -423,6 +490,9 @@ async def create_schedule_entry(
 ):
     if current_user.role.value == "viewer":
         raise HTTPException(status_code=403, detail="Доступ запрещён: требуется роль агента или выше")
+
+    if data.hour not in [2, 5, 11, 14, 17, 20, 23]:
+        raise HTTPException(status_code=400, detail="Неверный час. Допустимые значения: 2, 5, 11, 14, 17, 20, 23")
 
     vessel = db.query(Vessel).filter(
         Vessel.id == data.vessel_id,
@@ -449,7 +519,19 @@ async def create_schedule_entry(
     db.commit()
     db.refresh(new_entry)
     
-    # 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ВСЕМ КЛИЕНТАМ
     await manager.broadcast({"type": "schedule_updated", "date": str(data.date)})
     
     return {"message": "Успешно забронировано", "id": new_entry.id}
+
+'''
+==== Запрос времени для машины ====
+'''
+@app.get("/api/server-time")
+async def get_server_time():
+    from datetime import datetime
+    now = datetime.now()
+    return {
+        "date": now.strftime("%Y-%m-%d"), 
+        "hour": now.hour,
+        "minute": now.minute
+    }

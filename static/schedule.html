@@ -44,9 +44,18 @@
                 <input type="hidden" id="m_hour">
                 <input type="hidden" id="m_berth">
 
-                <label>Время (час):</label>
-                <input type="number" id="m_timeInput" min="0" max="23" required>
-
+                <label>Время слота:</label>
+                <select id="m_timeSelect" required>
+                    <option value="">-- Выберите время --</option>
+                    <option value="2">02:00</option>
+                    <option value="5">05:00</option>
+                    <option value="11">11:00</option>
+                    <option value="14">14:00</option>
+                    <option value="17">17:00</option>
+                    <option value="20">20:00</option>
+                    <option value="23">23:00</option>
+                </select>
+                
                 <label>Причал:</label>
                 <select id="m_berthSelect" required>
                     <option value="Причал №1">Причал №1</option>
@@ -76,6 +85,6 @@
         </div>
     </div>
 
-    <script src="/static/js/schedule.js?v=3"></script>
+    <script src="/static/js/schedule.js?v=16"></script>
 </body>
 </html>
