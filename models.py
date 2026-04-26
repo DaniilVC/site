@@ -4,9 +4,9 @@ from sqlalchemy.orm import relationship
 from database import Base
 import enum
 
-# ==========================================
-# ENUMS (Типы данных)
-# ==========================================
+'''
+===== Перечисления (Enums) =====
+'''
 
 class UserRole(enum.Enum):
     viewer = "viewer"
@@ -28,9 +28,9 @@ class BerthNumber(str, enum.Enum):
     berth4 = "Причал №4"
     berth5 = "Причал №5"
 
-# ==========================================
-# MODELS (Таблицы)
-# ==========================================
+'''
+===== Модели данных (SQLAlchemy Models) =====
+'''
 
 class Company(Base):
     __tablename__ = "companies"

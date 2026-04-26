@@ -1,0 +1,57 @@
+/* ===== register.css (Дополнение к common.css) ===== */
+
+/* Выпадающий список компаний */
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    background-color: var(--input-bg);
+    color: var(--text-input);
+    border: 2px solid var(--border-input);
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: border-color 0.3s, background-color 0.3s;
+}
+
+.form-group select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Кастомное поле ввода компании (скрыто по умолчанию, управляется JS) */
+#companyCustom {
+    margin-top: 10px;
+    display: none;
+}
+
+/* Ссылка переключения "Нет компании? / Выбрать из списка" */
+#toggleCompany {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+#toggleCompany:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* Состояние кнопки при загрузке */
+.register-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Мелкий текст-подсказка под полем */
+.form-group small {
+    display: block;
+    margin-top: 6px;
+    color: var(--text-footer);
+    font-size: 12px;
+}

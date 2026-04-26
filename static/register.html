@@ -37,7 +37,16 @@
                 
                 <div class="form-group">
                     <label for="company">Компания</label>
-                    <input type="text" id="company" name="company" placeholder="Название компании">
+                    <select id="company" name="company">
+                        <option value="">-- Выберите или введите новую --</option>
+                        <!-- Загрузится через JS -->
+                    </select>
+                    <input type="text" id="companyCustom" name="companyCustom" 
+                        placeholder="Или введите название новой компании" 
+                        style="margin-top: 8px; display: none;">
+                    <small style="color: var(--text-muted);">
+                        <a href="#" id="toggleCompany">Нет вашей компании? Добавить</a>
+                    </small>
                 </div>
                 
                 <button type="submit" class="register-btn">Зарегистрироваться</button>
@@ -49,6 +58,6 @@
         </div>
     </div>
 
-    <script src="/static/js/register.js?v=1.0"></script>
+    <script src="/static/js/register.js?v=1.4"></script>
 </body>
 </html>

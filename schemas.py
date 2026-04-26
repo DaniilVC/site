@@ -14,8 +14,8 @@ class VesselResponse(BaseModel):
     id: int
     vessel_name: str
     vessel_number: str
-    owner_id: int  # Добавил ID владельца для удобства
-
+    user_id: int  
+    
     class Config:
         from_attributes = True
 
@@ -55,7 +55,6 @@ class ScheduleResponse(BaseModel):
     status: str
     owner_id: int
     
-    # ✅ Новые поля для отображения
     vessel_name: Optional[str] = None
     vessel_number: Optional[str] = None
     owner_username: Optional[str] = None

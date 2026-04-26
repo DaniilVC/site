@@ -6,12 +6,12 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database import get_db, Base, engine
-from models import User, UserRole, Schedule, Vessel, ScheduleStatus, BerthNumber
+from models import User, UserRole, Schedule, Vessel, ScheduleStatus, BerthNumber, Company
 from pwdlib import PasswordHash
 from datetime import date, datetime
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
-from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse
+from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse
 from typing import List
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -203,36 +203,52 @@ async def schedule_page():
 '''
  ==== API =====
 ''' 
-# Регистрация нового пользователя
 @app.post("/api/register")
 def register(user_data: dict, db: Session = Depends(get_db)):
-    print("Пароль: ", user_data["password"])
-    existing = db.query(User).filter(
-        (User.email == user_data["email"])
-    ).first()
-
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Аккаунт с такой почтой уже существует"
-        )
+    """Регистрация пользователя с привязкой к компании"""
     
+    # 1. Проверка email
+    existing = db.query(User).filter(User.email == user_data["email"]).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Аккаунт с такой почтой уже существует")
+    
+    # 2. Работа с компанией
+    company_name = user_data.get("company", "").strip() or "Без компании"
+    
+    # Ищем существующую компанию
+    company = db.query(Company).filter(Company.name == company_name).first()
+    
+    # Если нет — создаём
+    if not company:
+        company = Company(name=company_name)
+        db.add(company)
+        db.commit()  # Чтобы получить company.id
+        db.refresh(company)
+    
+    # 3. Создаём пользователя
     new_user = User(
         username=user_data["username"],
         email=user_data["email"],
         password=hash_password(user_data["password"]),
         telephone_number=user_data.get("telephone_number", "Отсутствует"),
-        role=UserRole.viewer,
-        company=user_data.get("company", "Без компании")
+        role=UserRole.viewer,  # По умолчанию — просмотр
+        company_id=company.id  # ✅ Привязываем по ID
     )
-
+    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
     return {
-        "message": "Регистрация успешна!", 
+        "message": "Регистрация успешна! Ожидайте подтверждения от директора.", 
         "user_id": new_user.id
     }
+
+# Получение списка компаний для регистрации (выпадающий список)
+@app.get("/api/companies", response_model=list[CompanyResponse])
+def get_companies(db: Session = Depends(get_db)):
+    """Возвращает список всех компаний для регистрации"""
+    return db.query(Company).all()
 
 # Вход в систему
 @app.post("/api/login")
