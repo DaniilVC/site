@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let dates = [];
     let isTodayPartiallyLocked = false;
     let currentViewEntryId = null; 
+    let editingEntryId = null;
+    let editingEntryDate = null;
 
     // Генерация 4 дней от базовой даты
     function generateDates(baseDateStr) {
@@ -102,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     connectWS();
 
     // ===== ФУНКЦИЯ ОТРИСОВКИ ВСЕХ ТАБЛИЦ =====
-function renderAllTables() {
+    function renderAllTables() {
     tablesContainer.innerHTML = '';
     
     dates.forEach((dateStr, index) => {
@@ -147,7 +149,6 @@ function renderAllTables() {
             for (let b = 1; b <= 5; b++) {
                 const td = document.createElement('td');
                 
-                // 🔥 Разделяем блокировку по времени и права
                 const isTimeLocked = isToday && isTodayPartiallyLocked && slot.hour < 17;
                 const hasNoRights = !canEdit;
                 
@@ -190,59 +191,104 @@ function renderAllTables() {
     }
 
     // ===== ОБРАБОТЧИКИ МОДАЛЬНОГО ОКНА БРОНИРОВАНИЯ =====
-    document.getElementById('closeModal')?.addEventListener('click', () => modal.classList.add('hidden'));
+    document.getElementById('closeModal')?.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        editingEntryId = null;
+        editingEntryDate = null;  
+    });
+
     window.addEventListener('click', (e) => { 
-        if (e.target === modal) modal.classList.add('hidden');
-        if (e.target === viewModal) viewModal.classList.add('hidden'); // ✅ Закрытие окна просмотра
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            editingEntryId = null;
+            editingEntryDate = null;
+        }
+        if (e.target === viewModal) viewModal.classList.add('hidden');
     });
 
     document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const vesselIdRaw = document.getElementById('m_vesselSelect').value;
-        const vesselId = parseInt(vesselIdRaw);
-        
-        const data = {
-            date: document.getElementById('m_date').value,
-            hour: parseInt(document.getElementById('m_timeSelect').value),
-            berth: document.getElementById('m_berthSelect').value,
-            vessel_id: vesselId,
-            status: document.getElementById('m_status').value
-        };
-        
-        console.log('📤 Отправка данных:', data);
-        
-        if (!data.date) { alert('Не выбрана дата'); return; }
-        if (![2, 5, 11, 14, 17, 20, 23].includes(data.hour)) { 
-            alert('Выберите корректное время'); 
-            return; 
-        }
-        if (isNaN(vesselId) || vesselId <= 0) { 
-            alert('Выберите судно из списка!'); 
-            return; 
-        }
-
-        try {
-            const res = await fetch('/api/schedule', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
-                modal.classList.add('hidden');
-                loadScheduleData(data.date);
-            } else {
-                const err = await res.json();
-                const msg = err.detail?.[0]?.msg || err.detail || 'Ошибка сохранения';
-                alert(msg);
-                console.error('❌ Ошибка бэкенда:', err);
-            }
-        } catch (err) {
-            alert('Ошибка сети');
-            console.error('❌ Network error:', err);
-        }
+    e.preventDefault();
+    
+    const vesselId = parseInt(document.getElementById('m_vesselSelect').value);
+    const newDate = document.getElementById('m_date').value;
+    
+    const data = {
+        date: newDate,
+        hour: parseInt(document.getElementById('m_timeSelect').value),
+        berth: document.getElementById('m_berthSelect').value,
+        vessel_id: vesselId,
+        status: document.getElementById('m_status').value,
+        editing_entry_id: editingEntryId || null,
+        editing_entry_date: editingEntryDate || null
+    };
+    
+    console.log('📝 РЕДАКТИРОВАНИЕ:', {
+        editingEntryId,
+        editingEntryDate,
+        newDate,
+        datesDiffer: editingEntryDate !== newDate
     });
+    
+    if (!data.date || ![2,5,11,14,17,20,23].includes(data.hour) || isNaN(vesselId)) {
+        alert('Заполните корректно'); return;
+    }
+
+    try {
+
+        const res = await fetch('/api/schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(data)
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            alert(err.detail || 'Ошибка');
+            return;
+        }
+        
+        console.log('✅ Новая запись создана');
+        
+        if (editingEntryId) {
+            console.log('🗑️ Удаляем старую запись:', editingEntryId);
+            
+            // Берём токен напрямую из localStorage прямо перед запросом
+            const currentToken = localStorage.getItem('access_token');
+            
+            if (!currentToken) {
+                console.error('❌ Токен отсутствует в localStorage!');
+                alert('Сессия истекла. Перезагрузите страницу.');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const deleteRes = await fetch(`/api/schedule/${editingEntryId}`, {
+                method: 'DELETE',
+                headers: { 
+                    'Authorization': `Bearer ${currentToken}`,
+                    'Content-Type': 'application/json' // Добавляем на всякий случай
+                }
+            });
+
+            if (deleteRes.ok) {
+                console.log('✅ Старая запись удалена');
+            } else {
+                console.warn('️ Не удалось удалить старую запись:', await deleteRes.text());
+            }
+            
+            editingEntryId = null;
+            editingEntryDate = null;
+        }
+        modal.classList.add('hidden');
+        
+        console.log('🔄 Обновляем НОВУЮ дату:', data.date);
+        loadScheduleData(data.date);
+        
+    } catch (err) {
+        alert('Ошибка сети');
+        console.error('❌', err);
+    }
+});
 
     // ===== ДОБАВЛЕНИЕ СУДНА =====
     document.getElementById('addVesselForm').addEventListener('submit', async (e) => {
@@ -296,6 +342,36 @@ function renderAllTables() {
         }
     });
 
+    // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА РЕДАКТИРОВАНИЯ =====
+    async function openEditModal(entryId) {
+        try {
+            const res = await fetch(`/api/schedule/${entryId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) { alert('Не удалось загрузить данные'); return; }
+            
+            const entry = await res.json();
+            
+            // Заполняем форму
+            document.getElementById('m_date').value = entry.date;
+            document.getElementById('m_timeSelect').value = entry.hour;
+            document.getElementById('m_berthSelect').value = entry.berth;
+            document.getElementById('m_berth').value = entry.berth;
+            document.getElementById('m_vesselSelect').value = entry.vessel_id;
+            document.getElementById('m_status').value = entry.status;
+            
+            editingEntryId = entryId;
+            editingEntryDate = entry.date;  
+            
+            modal.classList.remove('hidden');
+            viewModal.classList.add('hidden');
+            
+        } catch (err) {
+            console.error('Ошибка:', err);
+            alert('Ошибка сети');
+        }
+    }
+
     // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 
     function openModal(date, hour, berth) {
@@ -329,8 +405,8 @@ function renderAllTables() {
         document.getElementById('view_berth').textContent = entry.berth;
         document.getElementById('view_status').textContent = entry.status;
         
-        document.getElementById('view_owner').textContent = 'ID: ' + entry.owner_id;
-        document.getElementById('view_company').textContent = '-';
+        document.getElementById('view_owner').textContent = entry.owner_username || '—';
+        document.getElementById('view_company').textContent = entry.owner_company || '—';
         
         // Кнопки только для владельца
         const isOwner = entry.owner_id === currentUserId;
@@ -375,11 +451,11 @@ function renderAllTables() {
         }
     });
 
-    document.getElementById('btn_edit_entry')?.addEventListener('click', (e) => {
-        // Пока просто закрываем просмотр и открываем бронирование
-        // В будущем можно заполнить форму данными записи
-        viewModal?.classList.add('hidden');
-        alert('Редактирование будет доступно в следующей версии');
+    document.getElementById('btn_edit_entry')?.addEventListener('click', async (e) => {
+        const entryId = e.target.dataset.id;
+        if (entryId) {
+            await openEditModal(entryId);
+        }
     });
 
     async function loadVessels() {
@@ -416,97 +492,103 @@ function renderAllTables() {
     }
 
     async function loadScheduleData(dateStr) {
-    try {
-        if (!dateStr) {
-            const firstCell = document.querySelector('.berth-cell');
-            if (firstCell) {
-                dateStr = firstCell.dataset.date;
-            } else {
-                console.error('Не удалось определить дату');
-                return;
-            }
-        }
-        
-        const bookedCellsForDate = document.querySelectorAll(`td[data-date="${dateStr}"].booked`);
-        bookedCellsForDate.forEach(cell => {
-            cell.textContent = '';
-            cell.classList.remove('booked');
-            cell.removeAttribute('data-status');
-            cell.removeAttribute('data-entryid');
-            cell.onclick = null;
-            cell.style.cursor = '';
-        });
-
-        const url = `/api/schedule?date=${dateStr}`;
-        console.log('📥 Загрузка расписания:', url);
-        
-        const res = await fetch(url, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        
-        if (!res.ok) {
-            const err = await res.json();
-            console.error('❌ Ошибка сервера:', err);
-            return;
-        }
-        
-        const entries = await res.json();
-        console.log('📋 Получено записей:', entries.length);
-        
-        entries.forEach(entry => {
-            const entryDate = String(entry.date).split('T')[0];
-            
-            const cell = document.querySelector(
-                `td[data-date="${entryDate}"][data-hour="${entry.hour}"][data-berth="${entry.berth}"]`
-            );
-            
-            if (!cell) {
-                console.warn('⚠️ Ячейка не найдена:', {
-                    date: entryDate,
-                    hour: entry.hour,
-                    berth: entry.berth,
-                    expectedSelector: `td[data-date="${entryDate}"][data-hour="${entry.hour}"][data-berth="${entry.berth}"]`
-                });
-                return;
-            }
-            
-            cell.textContent = entry.vessel_name || 'Занято';
-            cell.classList.add('booked');
-            cell.dataset.status = entry.status;
-            cell.dataset.entryId = entry.id;
-            
-            // Перезаписываем onclick для просмотра
-            cell.onclick = (e) => {
-                e.stopPropagation();
-                openViewModal(entry.id);
-            };
-            
-            cell.style.cursor = 'pointer';
-        });
-        
-        const allCellsForDate = document.querySelectorAll(`td[data-date="${dateStr}"]`);
-        allCellsForDate.forEach(cell => {
-            if (!cell.classList.contains('booked')) {
-                const hour = parseInt(cell.dataset.hour);
-                const berth = cell.dataset.berth;
-                
-                const isToday = dateStr === dates[0];
-                const isTimeLocked = isToday && isTodayPartiallyLocked && hour < 17;
-                const hasNoRights = !canEdit;
-                
-                if (!hasNoRights && !isTimeLocked) {
-                    cell.onclick = () => openModal(dateStr, hour, berth);
-                    cell.style.cursor = 'pointer';
+        try {
+            if (!dateStr) {
+                const firstCell = document.querySelector('.berth-cell');
+                if (firstCell) {
+                    dateStr = firstCell.dataset.date;
                 } else {
-                    cell.onclick = null;
-                    cell.style.cursor = 'not-allowed';
+                    console.error('Не удалось определить дату');
+                    return;
                 }
             }
-        });
-    } catch (err) {
-        console.error('Ошибка загрузки расписания:', err);
+            
+            const bookedCellsForDate = document.querySelectorAll(`td[data-date="${dateStr}"].booked`);
+            bookedCellsForDate.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('booked');
+                cell.removeAttribute('data-status');
+                cell.removeAttribute('data-entryid');
+                cell.onclick = null;
+                cell.style.cursor = '';
+            });
+
+            const url = `/api/schedule?date=${dateStr}`;
+            console.log('📥 Загрузка расписания:', url);
+            
+            const res = await fetch(url, { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            
+            if (!res.ok) {
+                const err = await res.json();
+                console.error('❌ Ошибка сервера:', err);
+                return;
+            }
+            
+            const entries = await res.json();
+            console.log('📋 Получено записей:', entries.length);
+            
+            entries.forEach(entry => {
+                const entryDate = String(entry.date).split('T')[0];
+                
+                const cell = document.querySelector(
+                    `td[data-date="${entryDate}"][data-hour="${entry.hour}"][data-berth="${entry.berth}"]`
+                );
+                
+                if (!cell) {
+                    console.warn('⚠️ Ячейка не найдена:', {
+                        date: entryDate,
+                        hour: entry.hour,
+                        berth: entry.berth,
+                        expectedSelector: `td[data-date="${entryDate}"][data-hour="${entry.hour}"][data-berth="${entry.berth}"]`
+                    });
+                    return;
+                }
+                
+                const vesselPart = entry.vessel_name || 'Неизвестно';
+                const companyPart = entry.owner_company || '—';
+                
+                cell.innerHTML = `
+                    <span class="vessel-name">${vesselPart}</span>
+                    <span class="company-name">${companyPart}</span>
+                `;
+                
+                cell.classList.add('booked');
+                cell.dataset.status = entry.status;
+                cell.dataset.entryId = entry.id;
+                
+                cell.onclick = (e) => {
+                    e.stopPropagation();
+                    openViewModal(entry.id);
+                };
+                
+                cell.style.cursor = 'pointer';
+            });
+            
+            const allCellsForDate = document.querySelectorAll(`td[data-date="${dateStr}"]`);
+            allCellsForDate.forEach(cell => {
+                if (!cell.classList.contains('booked')) {
+                    const hour = parseInt(cell.dataset.hour);
+                    const berth = cell.dataset.berth;
+                    
+                    const isToday = dateStr === dates[0];
+                    const isTimeLocked = isToday && isTodayPartiallyLocked && hour < 17;
+                    const hasNoRights = !canEdit;
+                    
+                    if (!hasNoRights && !isTimeLocked) {
+                        cell.onclick = () => openModal(dateStr, hour, berth);
+                        cell.style.cursor = 'pointer';
+                    } else {
+                        cell.onclick = null;
+                        cell.style.cursor = 'not-allowed';
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Ошибка загрузки расписания:', err);
+        }
     }
-}
 
     function formatDate(dateStr) {
         const d = new Date(dateStr);

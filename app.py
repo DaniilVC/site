@@ -482,15 +482,6 @@ def delete_vessel(
 ==== Расписание ====
 '''
 
-# Вспомогательная функция
-'''
-def enum_to_str(value):
-    """Безопасное получение строки из Enum"""
-    if hasattr(value, 'value'):
-        return value.value
-    return str(value)
-'''
-
 @app.get("/api/schedule", response_model=list[ScheduleResponse])
 def get_schedule(
     date: date = Query(...),
@@ -498,12 +489,14 @@ def get_schedule(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        results = db.query(Schedule, Vessel).join(
+        results = db.query(Schedule, Vessel, User).join(
             Vessel, Schedule.vessel_id == Vessel.id
+        ).outerjoin(  
+            User, Schedule.user_id == User.id
         ).filter(Schedule.date == date).all()
 
         response_data = []
-        for s, v in results:
+        for s, v, u in results:  
             try:
                 response_data.append({
                     "id": s.id,
@@ -514,6 +507,8 @@ def get_schedule(
                     "status": s.status.value if hasattr(s.status, 'value') else str(s.status),
                     "owner_id": s.user_id,
                     "vessel_name": v.vessel_name if v else None,
+                    "owner_username": u.username if u else None,
+                    "owner_company": u.company.name if u and u.company else None,
                     "created_at": str(s.created_at) if s.created_at else None
                 })
             except Exception as item_error:
@@ -539,7 +534,7 @@ async def create_schedule_entry(
         raise HTTPException(status_code=403, detail="Доступ запрещён: требуется роль агента или выше")
 
     if data.hour not in [2, 5, 11, 14, 17, 20, 23]:
-        raise HTTPException(status_code=400, detail="Неверный час. Допустимые значения: 2, 5, 11, 14, 17, 20, 23")
+        raise HTTPException(status_code=400, detail="Неверный час")
 
     vessel = db.query(Vessel).filter(
         Vessel.id == data.vessel_id,
@@ -548,33 +543,79 @@ async def create_schedule_entry(
     if not vessel:
         raise HTTPException(status_code=403, detail="Судно не найдено или не принадлежит вам")
 
-    conflict = db.query(Schedule).filter(
+    now = datetime.now()
+    today_str = now.date().isoformat()  # "YYYY-MM-DD"
+    
+    # 1. Запрет на прошедшие даты
+    if str(data.date) < today_str:
+        raise HTTPException(status_code=400, detail="Нельзя бронировать на прошедшие даты")
+        
+    # 2. Правила для СЕГОДНЯ
+    if str(data.date) == today_str:
+        # Нельзя ставить на час, который уже наступил или прошёл
+        if data.hour <= now.hour:
+            raise HTTPException(status_code=400, detail=f"Слот {data.hour}:00 уже прошёл или наступает сейчас")
+            
+        # Правило 15:00: после 15:00 доступны только слоты >= 17:00
+        if now.time() >= time(15, 0) and data.hour < 17:
+            raise HTTPException(
+                status_code=403, 
+                detail="После 15:00 доступны для бронирования только слоты с 17:00 и позже"
+            )
+
+    schedule_data = data.model_dump(exclude={'editing_entry_id', 'editing_entry_date'})
+    editing_id = data.editing_entry_id
+    editing_date = data.editing_entry_date
+
+    # Проверка конфликта
+    conflict_query = db.query(Schedule).filter(
         Schedule.date == data.date,
         Schedule.hour == data.hour,
         Schedule.berth == data.berth
-    ).first()
+    )
+    if editing_id:
+        conflict_query = conflict_query.filter(Schedule.id != editing_id)
     
+    conflict = conflict_query.first()
     if conflict:
-        occupied_vessel = db.query(Vessel).filter(Vessel.id == conflict.vessel_id).first()
+        occupied = db.query(Vessel).filter(Vessel.id == conflict.vessel_id).first()
         raise HTTPException(
             status_code=409,
-            detail=f"Конфликт! {data.berth} в {data.hour}:00 уже занят судном '{occupied_vessel.vessel_name if occupied_vessel else 'Неизвестно'}'"
+            detail=f"Конфликт! {data.berth} в {data.hour}:00 уже занят судном '{occupied.vessel_name if occupied else 'Неизвестно'}'"
         )
 
-    new_entry = Schedule(**data.model_dump(), user_id=current_user.id)
+    new_entry = Schedule(**schedule_data, user_id=current_user.id)
     db.add(new_entry)
+    db.flush()
+
+    if editing_id:
+        old_entry = db.query(Schedule).filter(
+            Schedule.id == editing_id,
+            Schedule.user_id == current_user.id
+        ).first()
+        if old_entry:
+            db.delete(old_entry)
+
     db.commit()
     db.refresh(new_entry)
-    
+
+    #  WebSocket уведомления
     await manager.broadcast({
-        "type": "schedule_updated", 
+        "type": "schedule_updated",
         "date": str(data.date)
     })
-    
-    return {"message": "Успешно забронировано", "id": new_entry.id}
 
-@app.get("/api/schedule/{entry_id}", response_model=ScheduleDetailResponse)
-async def get_schedule_entry(
+    if editing_id and editing_date and editing_date != data.date:
+        print(f"Sending update for old date: {editing_date}")
+        await manager.broadcast({
+            "type": "schedule_updated",
+            "date": str(editing_date)
+        })
+
+    return {"message": "Успешно", "id": new_entry.id}
+
+@app.get("/api/schedule/{entry_id}")
+def get_schedule_entry(
     entry_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -586,6 +627,10 @@ async def get_schedule_entry(
     vessel = db.query(Vessel).filter(Vessel.id == entry.vessel_id).first()
     owner = db.query(User).filter(User.id == entry.user_id).first()
     
+    owner_company = db.query(Company).filter(
+        Company.id == owner.company_id
+    ).first() if owner and owner.company_id else None
+    
     return {
         "id": entry.id,
         "vessel_id": entry.vessel_id,
@@ -593,9 +638,11 @@ async def get_schedule_entry(
         "vessel_number": vessel.vessel_number if vessel else None,
         "date": str(entry.date),
         "hour": entry.hour,
-        "berth": entry.berth,  
-        "status": entry.status,  
+        "berth": entry.berth.value if hasattr(entry.berth, 'value') else str(entry.berth),
+        "status": entry.status.value if hasattr(entry.status, 'value') else str(entry.status),
         "owner_id": entry.user_id,
+        "owner_username": owner.username if owner else None,  
+        "owner_company": owner_company.name if owner_company else None, 
         "created_at": str(entry.created_at) if entry.created_at else None
     }
 
@@ -605,29 +652,25 @@ async def delete_schedule_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Удаление записи (только владелец)"""
+    
     entry = db.query(Schedule).filter(
         Schedule.id == entry_id,
         Schedule.user_id == current_user.id
     ).first()
-    
+    # Он меня достал, поэтому лови костыль   
     if not entry:
-        raise HTTPException(
-            status_code=403, 
-            detail="Запись не найдена или у вас нет прав на удаление"
-        )
+        return {"message": "Запись уже удалена или не найдена", "status": "skipped"}
     
-    entry_date = entry.date
+    entry_date = str(entry.date)
     db.delete(entry)
     db.commit()
     
-    # не забыть по вебсокет
     await manager.broadcast({
         "type": "schedule_updated",
-        "date": str(entry_date)
+        "date": entry_date
     })
     
-    return {"message": "Запись удалена"}
+    return {"message": "Запись удалена", "status": "deleted"}
 
 '''
 ==== Запрос времени для машины ====

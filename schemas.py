@@ -34,6 +34,10 @@ class ScheduleCreate(BaseModel):
     berth: str = Field(...)
     status: str = Field(...)
 
+    editing_entry_id: Optional[int] = None
+    editing_entry_date: Optional[str] = None
+
+
 class ScheduleResponse(BaseModel):
     """Краткая информация для ячеек таблицы"""
     id: int
@@ -46,6 +50,7 @@ class ScheduleResponse(BaseModel):
     
     vessel_name: Optional[str] = None
     vessel_number: Optional[str] = None
+    owner_username: Optional[str] = None
     owner_company: Optional[str] = None 
     created_at: Optional[datetime] = None
 
@@ -66,6 +71,7 @@ class ScheduleDetailResponse(BaseModel):
     
     owner_id: int
     owner_username: Optional[str] = None  
+    owner_company: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:

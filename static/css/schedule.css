@@ -85,17 +85,17 @@
     font-weight: 700;
 }
 
-/* ===== ТАБЛИЦА — ЖЁСТКИЙ КОНТРАСТ (СВЕТЛАЯ ТЕМА) ===== */
+/* ===== ТАБЛИЦА — ЖЁСТКИЙ КОНТРАСТ ===== */
 .s-table {
     width: 100%;
     border-collapse: collapse !important;
     font-size: 14px;
     table-layout: fixed;
-    border: 3px solid #0f172a; /* Жирная внешняя рамка */
+    border: 3px solid #0f172a;
     background: #ffffff;
 }
 
-/* Заголовки — ТЁМНЫЕ И ЧЁТКИЕ */
+/* Заголовки */
 .s-table thead {
     background: #1e293b;
     color: #ffffff;
@@ -110,25 +110,25 @@
     text-transform: uppercase;
     font-size: 12px;
     letter-spacing: 0.5px;
-    border: 2px solid #334155; /* Сплошные границы */
+    border: 2px solid #334155;
     text-align: center;
 }
 
-/* Все ячейки — СПЛОШНЫЕ ГРАНИЦЫ, ТЁМНЫЙ ТЕКСТ */
+/* Все ячейки */
 .s-table td {
-    border: 2px solid #cbd5e1; /* Заметная сетка */
-    padding: 8px 4px;
+    border: 2px solid #cbd5e1;
+    padding: 6px 4px;
     text-align: center;
     vertical-align: middle;
-    color: #0f172a; /* Почти чёрный текст */
+    color: #0f172a;
     background: #ffffff;
     font-weight: 600;
 }
 
-/* ===== КОЛОНКА ВРЕМЕНИ (ФИКС КОНТРАСТА) ===== */
+/* Колонка времени */
 .s-table .hour-cell {
-    background: #e2e8f0;      /* Светло-серый фон */
-    color: #0f172a;           /* Тёмно-синий текст (высокий контраст) */
+    background: #e2e8f0;
+    color: #0f172a;
     font-weight: 800;
     width: 70px;
     border-right: 3px solid #94a3b8;
@@ -137,7 +137,6 @@
     z-index: 5;
 }
 
-/* Убираем "зебру" для колонки времени, чтобы фон был одинаковым */
 .s-table tbody tr:nth-child(even) td.hour-cell,
 .s-table tbody tr:nth-child(odd) td.hour-cell {
     background: #e2e8f0 !important;
@@ -152,6 +151,7 @@
     min-width: 80px;
     background: #ffffff;
     transition: background 0.15s;
+    vertical-align: middle; /* Возвращаем стандартное поведение таблицы */
 }
 
 /* Ховер */
@@ -162,7 +162,7 @@
     z-index: 1;
 }
 
-/* Занятая ячейка */
+/*  ИСПРАВЛЕННАЯ ЗАНЯТАЯ ЯЧЕЙКА (убран flex, который ломал таблицу) */
 .s-table .berth-cell.booked {
     background: linear-gradient(135deg, #4f46e5, #3730a3);
     color: white;
@@ -171,6 +171,63 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     border: 2px solid #312e81;
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    
+    white-space: normal;
+    line-height: 1.25;
+    font-size: 12px;
+    padding: 4px 2px;
+    vertical-align: middle;
+    text-align: center;
+    min-height: 40px;
+    position: relative;
+    overflow: hidden; /* Защита от переполнения */
+}
+
+.s-table .berth-cell.booked .vessel-name {
+    display: block;
+    font-weight: 800;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.s-table .berth-cell.booked .company-name {
+    display: block;
+    font-weight: 500;
+    font-size: 11px;
+    opacity: 0.9;
+    line-height: 1.2;
+    word-break: break-word; /* Перенос длинных названий компаний */
+}
+
+.s-table .berth-cell.booked .separator {
+    display: none; /* Убираем, так как используем блочные span */
+}
+
+/* Галочка */
+.berth-cell.booked::after {
+    content: "✓";
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    font-size: 10px;
+    opacity: 0.85;
+    color: rgba(255,255,255,0.95);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Адаптив для ячеек */
+@media (max-width: 1024px) {
+    .s-table .berth-cell.booked {
+        font-size: 11px;
+        padding: 3px 2px;
+        min-height: 36px;
+    }
+    .berth-cell.booked::after {
+        font-size: 9px;
+        top: 2px;
+        right: 3px;
+    }
 }
 
 /* Статусы */
@@ -187,32 +244,20 @@
     border-color: #3730a3; 
 }
 
-/* Галочка */
-.berth-cell.booked::after {
-    content: "✓";
-    position: absolute;
-    top: 2px;
-    right: 4px;
-    font-size: 11px;
-    opacity: 1;
-    color: rgba(255,255,255,0.9);
-}
-
-/* Заблокированная (время/роль) */
+/* Заблокированная ячейка */
 .s-table .berth-cell.locked {
     background: #f1f5f9;
-    color: #475569; /* Тёмно-серый, ЧИТАЕТСЯ */
+    color: #475569;
     cursor: not-allowed;
     border: 2px dashed #94a3b8;
     font-weight: 600;
-    opacity: 1; /* Убрал бледность */
+    opacity: 1;
 }
 .s-table .berth-cell.locked:hover {
     background: #f1f5f9;
     outline: none;
 }
 
-/* Иконка замка/часов */
 .s-table .berth-cell.locked::before {
     content: "⏳";
     position: absolute;
@@ -224,7 +269,6 @@
     pointer-events: none;
 }
 
-/* Тултип для заблокированных */
 .s-table .berth-cell.locked:hover::after {
     content: "Доступно с 17:00";
     position: absolute;
@@ -333,19 +377,10 @@
     padding: 10px 0;
     border-bottom: 1px solid #cbd5e1;
 }
-.info-row:last-child {
-    border-bottom: none;
-}
+.info-row:last-child { border-bottom: none; }
 
-.info-row .label {
-    font-weight: 700;
-    color: #475569;
-}
-
-.info-row .value {
-    font-weight: 600;
-    color: #0f172a;
-}
+.info-row .label { font-weight: 700; color: #475569; }
+.info-row .value { font-weight: 600; color: #0f172a; }
 
 /* ===== АДАПТИВ ===== */
 @media (max-width: 1024px) {
@@ -381,9 +416,10 @@
     .s-table { border-color: #475563; background: #1e293b; }
     .s-table th { background: #0f172a; border-color: #334155; color: #f1f5f9; }
     .s-table td { border-color: #334155; color: #f1f5f9; background: #1e293b; }
+    
     .s-table .hour-cell {
         background: #0f172a;
-        color: #ffffff;           /* Чистый белый — идеально читается */
+        color: #ffffff;
         border-right-color: #475563;
     }
     .s-table tbody tr:nth-child(even) td.hour-cell,
