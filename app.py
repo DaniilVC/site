@@ -5,16 +5,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from database import get_db, Base, engine
+from database import SessionLocal, get_db, Base, engine
 from models import User, UserRole, Schedule, Vessel, ScheduleStatus, BerthNumber, Company
 from pwdlib import PasswordHash
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse, ScheduleDetailResponse
 from typing import List
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.schedulers.background import BackgroundScheduler
 from contextlib import asynccontextmanager
 
 
@@ -31,7 +32,7 @@ from contextlib import asynccontextmanager
 '''
 JWT_SECRET = Config.JWT_SECRET
 ALGORITHM = "HS256"
-scheduler = AsyncIOScheduler()
+scheduler = BackgroundScheduler()
 security = HTTPBearer(auto_error=False)
 
 '''
@@ -106,31 +107,39 @@ def check_director_role(current_user: User = Depends(get_current_user)):
 '''
 
 def cleanup_old_schedules():
-    db = next(get_db())
-    _n = 0
-    try: 
+    db = SessionLocal()
+    deleted_count = 0
+    try:
         today = date.today()
-        _n = db.query(Schedule).filter(Schedule.date < today).delete(synchronize_session=False)
+        
+        deleted_count = db.query(Schedule).filter(
+            Schedule.date < today
+        ).delete(synchronize_session=False)
+        
         db.commit()
+        print(f"Cleaning *sweep-sweep*: deleted {deleted_count} old schedules")
     except Exception as e:
         db.rollback()
-        print(f"Troubles with cleaning *sweep-sweep*: {e}")
+        print(f"Error while cleaning: {e}")
     finally:
-        print(f"Cleaning... Deleted {_n} old entries")
         db.close()
+        
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler.add_job(
         cleanup_old_schedules,
-        CronTrigger(hour=0, minute=0))    
-    scheduler.add_job(
-        lambda: print(f"Scheduler is alive! Time: {datetime.now()}"),
-        CronTrigger(hour=0, minute=0)
+        trigger=CronTrigger(hour=0, minute=0, timezone="Europe/Moscow"),
+        id="cleanup_schedules",
+        replace_existing=True  # Защита от дублей при --reload
     )
+
     scheduler.start()
+
     yield
+    
     scheduler.shutdown()
+
 
 '''
 ==== Инициализация FastAPI ====
