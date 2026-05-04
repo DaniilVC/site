@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from database import get_db, Base, engine
 from models import User, UserRole, Schedule, Vessel, ScheduleStatus, BerthNumber, Company
 from pwdlib import PasswordHash
-from datetime import date, datetime
+from datetime import date, datetime, time
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse, ScheduleDetailResponse
