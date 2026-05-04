@@ -110,7 +110,7 @@ async function loadUsers(token) {
                             style="margin-left: 10px;">
                         <option value="viewer" ${user.role === 'viewer' ? 'selected' : ''}>Viewer</option>
                         <option value="agent" ${user.role === 'agent' ? 'selected' : ''}>Agent</option>
-                        <option value="admin" ${user.role === 'director' ? 'selected' : ''}>Director</option>
+                        <option value="director" ${user.role === 'director' ? 'selected' : ''}>Director</option>
                         <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>                        
                     </select>
                 </td>
@@ -152,7 +152,6 @@ async function changeRole(userId, newRole) {
         if (response.ok) {
             console.log('✅ Роль изменена');
             alert('Роль успешно изменена!');
-            // Перезагружаем страницу
             location.reload();
         } else {
             const error = await response.json();

@@ -35,7 +35,7 @@
         </main>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО -->
+    <!-- ✅ МОДАЛЬНОЕ ОКНО БРОНИРОВАНИЯ -->
     <div id="bookingModal" class="modal hidden">
         <div class="modal-content">
             <h3>📝 Бронирование ячейки</h3>
@@ -81,59 +81,58 @@
                     <button type="submit" class="btn-save">💾 Сохранить</button>
                     <button type="button" id="closeModal" class="btn-cancel">Отмена</button>
                 </div>
-                
-                <!-- МОДАЛЬНОЕ ОКНО ПРОСМОТРА -->
-                <div id="viewModal" class="modal hidden">
-                    <div class="modal-content">
-                        <h3>📋 Информация о бронировании</h3>
-                        
-                        <div class="info-block">
-                            <div class="info-row">
-                                <span class="label">🚢 Судно:</span>
-                                <span class="value" id="view_vessel_name">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">🔢 Рег. номер:</span>
-                                <span class="value" id="view_vessel_number">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">📅 Дата:</span>
-                                <span class="value" id="view_date">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">⏰ Время:</span>
-                                <span class="value" id="view_time">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">📍 Причал:</span>
-                                <span class="value" id="view_berth">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">📝 Операция:</span>
-                                <span class="value" id="view_status">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">👤 Забронировал:</span>
-                                <span class="value" id="view_owner">-</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="label">🏢 Компания:</span>
-                                <span class="value" id="view_company">-</span>
-                            </div>
-                        </div>
-
-                        <div class="modal-actions" id="view_actions">
-                            <button id="btn_edit_entry" class="btn-save" style="display:none;">✏️ Редактировать</button>
-                            <button id="btn_delete_entry" class="btn-cancel" style="display:none;">🗑️ Удалить</button>
-                            <button id="closeViewModal" class="btn-cancel">Закрыть</button>
-                        </div>
-                    </div>
-                </div>
-
             </form>
         </div>
     </div>
 
-    <script src="/static/js/schedule.js?v=20"></script>
+    <!-- ✅ МОДАЛЬНОЕ ОКНО ПРОСМОТРА (ОТДЕЛЬНО, НА УРОВНЕ BODY) -->
+    <div id="viewModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>📋 Информация о бронировании</h3>
+            
+            <div class="info-block">
+                <div class="info-row">
+                    <span class="label">🚢 Судно:</span>
+                    <span class="value" id="view_vessel_name">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">🔢 Рег. номер:</span>
+                    <span class="value" id="view_vessel_number">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">📅 Дата:</span>
+                    <span class="value" id="view_date">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">⏰ Время:</span>
+                    <span class="value" id="view_time">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">📍 Причал:</span>
+                    <span class="value" id="view_berth">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">📝 Операция:</span>
+                    <span class="value" id="view_status">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">👤 Забронировал:</span>
+                    <span class="value" id="view_owner">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">🏢 Компания:</span>
+                    <span class="value" id="view_company">-</span>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn_edit_entry" class="btn-save" style="display:none;">✏️ Редактировать</button>
+                <button id="btn_delete_entry" class="btn-cancel" style="display:none;">🗑️ Удалить</button>
+                <button id="closeViewModal" class="btn-cancel">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/schedule.js?v=26"></script>
 </body>
 </html>

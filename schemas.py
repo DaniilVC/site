@@ -2,10 +2,7 @@ from pydantic import BaseModel, Field
 from datetime import date as dt, datetime
 from typing import Optional
 
-'''
-===== Схемы для судов (Vessel) =====
-'''
-
+# ===== Схемы для судов (Vessel) =====
 class VesselCreate(BaseModel):
     vessel_name: str = Field(..., min_length=2, max_length=100)
     vessel_number: str = Field(..., min_length=2, max_length=50)
@@ -19,25 +16,17 @@ class VesselResponse(BaseModel):
     class Config:
         from_attributes = True
 
-'''
-===== Схемы для компаний (Company) =====
-'''
-
+# ===== Схемы для компаний (Company) =====
 class CompanyResponse(BaseModel):
     id: int
     name: str
-
     class Config:
         from_attributes = True
 
 class CompanyCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
 
-
-'''
-===== Схемы для расписания (Schedule) =====
-'''
-
+# ===== Схемы для расписания (Schedule) =====
 class ScheduleCreate(BaseModel):
     vessel_id: int = Field(..., ge=1)
     date: dt = Field(..., description="Дата YYYY-MM-DD")
@@ -57,9 +46,7 @@ class ScheduleResponse(BaseModel):
     
     vessel_name: Optional[str] = None
     vessel_number: Optional[str] = None
-    owner_username: Optional[str] = None
-    owner_company: Optional[str] = None
-    
+    owner_company: Optional[str] = None 
     created_at: Optional[datetime] = None
 
     class Config:
@@ -74,15 +61,11 @@ class ScheduleDetailResponse(BaseModel):
     berth: str
     status: str
     
-    # Детали судна
     vessel_name: str
     vessel_number: Optional[str] = None
     
-    # Детали владельца
     owner_id: int
-    owner_username: str
-    owner_company: Optional[str] = None
-    
+    owner_username: Optional[str] = None  
     created_at: Optional[datetime] = None
 
     class Config:

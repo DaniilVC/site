@@ -11,11 +11,20 @@ from pwdlib import PasswordHash
 from datetime import date, datetime
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
-from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse
+from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse, ScheduleDetailResponse
 from typing import List
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from contextlib import asynccontextmanager
+
+
+
+'''
+Я ОБЕЩАЮ, ЧТО ПРОВЕДУ РЕФАКТОРИНГ И РАЗБИВКУ НА МОДУЛИ, КОГДА СДЕЛАЮ ВСЁ ОСНОВНОЕ.
+'''
+
+
+
 
 '''
 ==== Конфигурация ====
@@ -231,8 +240,8 @@ def register(user_data: dict, db: Session = Depends(get_db)):
         email=user_data["email"],
         password=hash_password(user_data["password"]),
         telephone_number=user_data.get("telephone_number", "Отсутствует"),
-        role=UserRole.viewer,  # По умолчанию — просмотр
-        company_id=company.id  # ✅ Привязываем по ID
+        role=UserRole.viewer,  # По умолчанию - просмотр
+        company_id=company.id  
     )
     
     db.add(new_user)
@@ -358,7 +367,7 @@ async def change_user_role(
         raise HTTPException(status_code=400, detail="Нельзя изменить свою роль")
     
     new_role = role_data.get("role")
-    if new_role not in ["viewer", "agent", "admin"]:
+    if new_role not in ["viewer", "agent", "admin", "director"]:
         raise HTTPException(status_code=400, detail="Неверная роль")
     
     user.role = UserRole(new_role)
@@ -473,30 +482,52 @@ def delete_vessel(
 ==== Расписание ====
 '''
 
+# Вспомогательная функция
+'''
+def enum_to_str(value):
+    """Безопасное получение строки из Enum"""
+    if hasattr(value, 'value'):
+        return value.value
+    return str(value)
+'''
+
 @app.get("/api/schedule", response_model=list[ScheduleResponse])
 def get_schedule(
-    date: date = Query(..., description="Дата в формате YYYY-MM-DD"),
+    date: date = Query(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    results = db.query(Schedule, Vessel.vessel_name).join(
-        Vessel, Schedule.vessel_id == Vessel.id
-    ).filter(Schedule.date == date).all()
+    try:
+        results = db.query(Schedule, Vessel).join(
+            Vessel, Schedule.vessel_id == Vessel.id
+        ).filter(Schedule.date == date).all()
 
-    return [
-        {
-            "id": s.id,
-            "vessel_id": s.vessel_id,
-            "date": s.date, 
-            "hour": s.hour,
-            "berth": s.berth,
-            "status": s.status,
-            "owner_id": s.user_id,
-            "vessel_name": v_name,
-            "created_at": s.created_at
-        }
-        for s, v_name in results
-    ]
+        response_data = []
+        for s, v in results:
+            try:
+                response_data.append({
+                    "id": s.id,
+                    "vessel_id": s.vessel_id,
+                    "date": str(s.date),
+                    "hour": s.hour,
+                    "berth": s.berth.value if hasattr(s.berth, 'value') else str(s.berth),
+                    "status": s.status.value if hasattr(s.status, 'value') else str(s.status),
+                    "owner_id": s.user_id,
+                    "vessel_name": v.vessel_name if v else None,
+                    "created_at": str(s.created_at) if s.created_at else None
+                })
+            except Exception as item_error:
+                print(f"Error with schedule {s.id}: {item_error}")
+                continue
+        
+        return response_data
+        
+    except Exception as e:
+        print(f"Error in get_schedule: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 @app.post("/api/schedule")
 async def create_schedule_entry(
@@ -535,9 +566,68 @@ async def create_schedule_entry(
     db.commit()
     db.refresh(new_entry)
     
-    await manager.broadcast({"type": "schedule_updated", "date": str(data.date)})
+    await manager.broadcast({
+        "type": "schedule_updated", 
+        "date": str(data.date)
+    })
     
     return {"message": "Успешно забронировано", "id": new_entry.id}
+
+@app.get("/api/schedule/{entry_id}", response_model=ScheduleDetailResponse)
+async def get_schedule_entry(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    entry = db.query(Schedule).filter(Schedule.id == entry_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    
+    vessel = db.query(Vessel).filter(Vessel.id == entry.vessel_id).first()
+    owner = db.query(User).filter(User.id == entry.user_id).first()
+    
+    return {
+        "id": entry.id,
+        "vessel_id": entry.vessel_id,
+        "vessel_name": vessel.vessel_name if vessel else "Неизвестно",
+        "vessel_number": vessel.vessel_number if vessel else None,
+        "date": str(entry.date),
+        "hour": entry.hour,
+        "berth": entry.berth,  
+        "status": entry.status,  
+        "owner_id": entry.user_id,
+        "created_at": str(entry.created_at) if entry.created_at else None
+    }
+
+@app.delete("/api/schedule/{entry_id}")
+async def delete_schedule_entry(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Удаление записи (только владелец)"""
+    entry = db.query(Schedule).filter(
+        Schedule.id == entry_id,
+        Schedule.user_id == current_user.id
+    ).first()
+    
+    if not entry:
+        raise HTTPException(
+            status_code=403, 
+            detail="Запись не найдена или у вас нет прав на удаление"
+        )
+    
+    entry_date = entry.date
+    db.delete(entry)
+    db.commit()
+    
+    # не забыть по вебсокет
+    await manager.broadcast({
+        "type": "schedule_updated",
+        "date": str(entry_date)
+    })
+    
+    return {"message": "Запись удалена"}
 
 '''
 ==== Запрос времени для машины ====
