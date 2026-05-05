@@ -11,7 +11,7 @@ from pwdlib import PasswordHash
 from datetime import date, datetime, time, timedelta
 import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
-from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse, ScheduleDetailResponse
+from schemas import ScheduleCreate, ScheduleResponse, VesselCreate, VesselResponse, CompanyCreate, CompanyResponse, ScheduleDetailResponse, UserResponse
 from typing import List
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
@@ -217,6 +217,10 @@ async def admin_page():
 @app.get("/schedule.html")
 async def schedule_page():
     return FileResponse("static/schedule.html")
+
+@app.get("/directory.html")
+async def directory_page():
+    return FileResponse("static/directory.html")
 
 '''
  ==== API =====
@@ -432,6 +436,76 @@ async def get_stats(
     }
 
 '''
+==== Панель для директора ====
+'''
+
+@app.get("/api/directory/employees", response_model=List[UserResponse])
+async def get_employees(
+    db: Session = Depends(get_db),
+    director: User = Depends(check_director_role)
+):
+    employees = db.query(User).filter(
+        User.company_id == director.company_id,
+        User.role.in_([UserRole.agent, UserRole.viewer]),
+    ).all()
+    return employees
+
+@app.put("/api/directory/employees/{emp_id}/role")
+async def update_employee_role(
+    emp_id: int,
+    role_data: dict,  
+    db: Session = Depends(get_db),
+    director: User = Depends(check_director_role)
+):
+    emp = db.query(User).filter(User.id == emp_id).first()
+    
+    if not emp or emp.company_id != director.company_id:
+        raise HTTPException(404, "Сотрудник не найден")
+        
+    new_role = role_data.get("role")
+    if new_role not in ["agent", "viewer"]:
+        raise HTTPException(400, "Можно назначать только agent или viewer")
+        
+    emp.role = UserRole(new_role)
+    db.commit()
+    return {"message": "Роль изменена"}
+
+@app.delete("/api/directory/employees/{emp_id}")
+async def delete_employee(
+    emp_id: int,
+    db: Session = Depends(get_db),
+    director: User = Depends(check_director_role)
+):
+    emp = db.query(User).filter(User.id == emp_id).first()
+    
+    if not emp or emp.company_id != director.company_id:
+        raise HTTPException(404, "Сотрудник не найден")
+        
+    # Защита от дурачка
+    if emp.role.value in ["admin", "director"] or emp.id == director.id:
+        raise HTTPException(403, "Недостаточно прав")
+        
+    db.delete(emp)
+    db.commit()
+    return {"message": "Сотрудник удалён"}
+
+@app.get("/api/directory/stats")
+async def get_director_stats(
+    db: Session = Depends(get_db),
+    director: User = Depends(check_director_role)
+):
+    base = db.query(User).filter(
+        User.role.in_([UserRole.agent, UserRole.viewer]),
+        User.company_id == director.company_id 
+    )
+    return {
+        "total": base.count(),
+        "by_role": {
+            "agent": base.filter(User.role == UserRole.agent).count(),
+            "viewer": base.filter(User.role == UserRole.viewer).count()
+        }
+    }
+'''
 ==== Функции для агентов ====
 '''
 
@@ -561,10 +635,6 @@ async def create_schedule_entry(
         
     # 2. Правила для СЕГОДНЯ
     if str(data.date) == today_str:
-        # Нельзя ставить на час, который уже наступил или прошёл
-        if data.hour <= now.hour:
-            raise HTTPException(status_code=400, detail=f"Слот {data.hour}:00 уже прошёл или наступает сейчас")
-            
         # Правило 15:00: после 15:00 доступны только слоты >= 17:00
         if now.time() >= time(15, 0) and data.hour < 17:
             raise HTTPException(

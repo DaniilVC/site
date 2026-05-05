@@ -21,7 +21,7 @@
 }
 
 /* Кнопка админ-панели */
-.admin-btn {
+.admin-btn, .director-btn {
     display: inline-block;
     width: 100%;
     padding: 14px;
@@ -37,6 +37,11 @@
 }
 
 .admin-btn:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px var(--accent-shadow);
+}
+
+.director-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 20px var(--accent-shadow);
 }

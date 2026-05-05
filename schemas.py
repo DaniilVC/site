@@ -16,6 +16,15 @@ class VesselResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# ===== Схемы для пользователей (User) =====
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: Optional[str] = None
+    role: str  
+    telephone_number: Optional[str] = None
+    created_at: Optional[datetime] = None
+
 # ===== Схемы для компаний (Company) =====
 class CompanyResponse(BaseModel):
     id: int
@@ -76,3 +85,4 @@ class ScheduleDetailResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        

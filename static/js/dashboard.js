@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Dashboard загружен');
     
-    // 1. Проверяем токен
+    // Проверяем токен
     const token = localStorage.getItem('access_token');
     
     if (!token) {
@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     console.log('✅ Токен есть:', token.substring(0, 20) + '...');
     
-    // 2. Загружаем данные
+    // Загружаем данные
     try {
         const response = await fetch('/api/profile', {
             headers: {
@@ -35,23 +35,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         const user = await response.json();
         console.log('✅ Данные получены:', user);
         
-        // 3. Отображаем данные
+        // Отображаем данные
         document.getElementById('username').textContent = user.username;
         document.getElementById('email').textContent = user.email;
         document.getElementById('role').textContent = user.role;
         document.getElementById('telephone_number').textContent = user.telephone_number || 'Не указан';
         document.getElementById('company').textContent = user.company?.name || 'Не указана';
         
-        // 🔥 4. Показываем кнопку админки, если роль admin
+        // Показываем кнопку админки, если роль admin
         if (user.role === 'admin') {
             const adminBtn = document.getElementById('adminPanelBtn');
             if (adminBtn) {
                 adminBtn.style.display = 'block';
-                console.log('✅ Пользователь админ → показываем кнопку админ-панели');
             }
         }
         
-        // 5. Скрываем "Загрузка..."
+        if (user.role === 'director') {
+            const directorBtn = document.getElementById('directorPanelBtn');
+            if (directorBtn) {
+                directorBtn.style.display = 'block';
+            }
+        }
+
+        // Скрываем "Загрузка..."
         const loadingMsg = document.getElementById('loadingMessage');
         if (loadingMsg) {
             loadingMsg.style.display = 'none';
