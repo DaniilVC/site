@@ -97,6 +97,8 @@ async function changeRole(id, newRole) {
         if (res.ok) {
             select.dataset.orig = newRole;
             alert('✅ Роль изменена');
+            loadEmployees();
+            loadStats();
         } else {
             const err = await res.json();
             select.value = original; // откат UI
