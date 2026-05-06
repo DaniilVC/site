@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from datetime import date as dt, datetime
 from typing import Optional
 
@@ -20,7 +20,7 @@ class VesselResponse(BaseModel):
 class UserResponse(BaseModel):
     id: int
     username: str
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     role: str  
     telephone_number: Optional[str] = None
     created_at: Optional[datetime] = None

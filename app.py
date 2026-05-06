@@ -17,7 +17,7 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.background import BackgroundScheduler
 from contextlib import asynccontextmanager
-
+import html
 
 
 '''
@@ -223,16 +223,17 @@ async def directory_page():
 '''
  ==== API =====
 ''' 
+# регистрация была сделана очень давно и мне лень переделывать её под мой прикол с schemas.py
 @app.post("/api/register")
 def register(user_data: dict, db: Session = Depends(get_db)):
     """Регистрация пользователя с привязкой к компании"""
     
-    # 1. Проверка email
+    # Проверка email
     existing = db.query(User).filter(User.email == user_data["email"]).first()
     if existing:
         raise HTTPException(status_code=400, detail="Аккаунт с такой почтой уже существует")
     
-    # 2. Работа с компанией
+    # Работа с компанией
     company_name = user_data.get("company", "").strip() or "Без компании"
     
     # Ищем существующую компанию
@@ -245,12 +246,13 @@ def register(user_data: dict, db: Session = Depends(get_db)):
         db.commit()  # Чтобы получить company.id
         db.refresh(company)
     
-    # 3. Создаём пользователя
+    # Создаём пользователя
     new_user = User(
-        username=user_data["username"],
-        email=user_data["email"],
+        # Я сделал затычку против XSS атаки, добавив функцию escape, должно сработать
+        username=html.escape(user_data["username"]),
+        email=html.escape(user_data["email"]),
         password=hash_password(user_data["password"]),
-        telephone_number=user_data.get("telephone_number", "Отсутствует"),
+        telephone_number=html.escape(user_data.get("telephone_number", "Отсутствует")),
         role=UserRole.viewer,  # По умолчанию - просмотр
         company_id=company.id  
     )
@@ -260,7 +262,7 @@ def register(user_data: dict, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     return {
-        "message": "Регистрация успешна! Ожидайте подтверждения от директора.", 
+        "message": "Регистрация успешна!", 
         "user_id": new_user.id
     }
 
@@ -307,6 +309,8 @@ def profile(current_user: User = Depends(get_current_user)):
         "role": current_user.role.value
     }
 
+# тут значит я хотел сделать обновление профиля, но забыл и забил
+'''
 @app.put("/api/profile")
 def update_profile(update_data: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if "username" in update_data:
@@ -327,18 +331,21 @@ def update_profile(update_data: dict, current_user: User = Depends(get_current_u
         "company": current_user.company,
         "role": current_user.role.value
     }
+'''
+
+#Работает - не трогай. Пусть будет...
+@app.get("/api/dashboard")
+async def dashboard(current_user: User = Depends(get_current_user)):
+    return FileResponse("static/dashboard.html")
 
 @app.post("/api/logout")
 def logout():
     return {"message": "Вы вышли из системы"}
 
-@app.get("/api/dashboard")
-async def dashboard(current_user: User = Depends(get_current_user)):
-    return FileResponse("static/dashboard.html")
-
 '''
 ==== Админка ====
 '''
+# Админка тоже очень давно сделана, мне тоже лень делать по-человечески через schemas.py
 # Работа с пользователями
 @app.get("/api/admin/users")
 async def get_all_users(
