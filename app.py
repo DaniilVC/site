@@ -25,8 +25,6 @@ from contextlib import asynccontextmanager
 '''
 
 
-
-
 '''
 ==== Конфигурация ====
 '''

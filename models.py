@@ -49,7 +49,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     username = Column(String(60), unique=False, nullable=False)
     telephone_number = Column(String(11), nullable=False, default="Отсутствует")
-    email = Column(String(100), unique=True, nullable=False)  # ✅ Добавил unique=True для корректного входа
+    email = Column(String(100), unique=True, nullable=False)  
     password = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), default=UserRole.viewer)
     
@@ -88,5 +88,6 @@ class Schedule(Base):
     berth = Column(Enum(BerthNumber, values_callable=lambda obj: [e.value for e in obj]), default=BerthNumber.unset, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
+    # связи
     user = relationship("User", back_populates="schedule_entries")
     vessel = relationship("Vessel")
