@@ -1,20 +1,33 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // ===== 1. ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ДОСТУПА =====
     const token = localStorage.getItem('access_token');
-    if (!token) { window.location.href = '/login.html'; return; }
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    let payload;
+    try {
+        payload = JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+        console.error('Невалидный токен');
+        localStorage.removeItem('access_token');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    const currentUserId = payload.user_id;
+    const canEdit = ['agent', 'director', 'admin'].includes(payload.role);
+
+    // ===== 2. КОНФИГУРАЦИЯ =====
+    // ВАЖНО: Порядок в массиве строго соответствует порядку колонок в HTML-таблице
+    const BERTH_NAMES = ['ТНГ', 'ТТНГ', 'ЗТКТ', 'МТТ', 'РЕЙД'];
     
-    // Определяем роль и права
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const userRole = payload.role;
-    const currentUserId = payload.user_id; 
-    const canEdit = ['agent', 'director', 'admin'].includes(userRole);
+    // Маппинг для отображения: "Причал №1" -> "ТНГ"
+    const BERTH_DISPLAY_MAP = Object.fromEntries(
+        BERTH_NAMES.map((name, idx) => [`Причал №${idx + 1}`, name])
+    );
 
-    const tablesContainer = document.getElementById('tablesContainer');
-    const modal = document.getElementById('bookingModal');
-    const viewModal = document.getElementById('viewModal'); 
-    const vesselList = document.getElementById('vesselList');
-    const vesselSelect = document.getElementById('m_vesselSelect');
-
-    // ===== НАСТРОЙКИ СЛОТОВ =====
     const TIME_SLOTS = [
         { display: "02:00", hour: 2 },
         { display: "05:00", hour: 5 },
@@ -25,16 +38,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         { display: "23:00", hour: 23 }
     ];
 
-    // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ СИНХРОНИЗАЦИИ =====
+    // ===== 3. СОСТОЯНИЕ =====
     let currentServerDate = null;
     let dates = [];
     let isTodayPartiallyLocked = false;
-    let currentViewEntryId = null; 
     let editingEntryId = null;
-    let editingEntryDate = null;
 
-    // Генерация 4 дней от базовой даты
-    function generateDates(baseDateStr) {
+    // DOM элементы
+    const els = {
+        tablesContainer: document.getElementById('tablesContainer'),
+        modal: document.getElementById('bookingModal'),
+        viewModal: document.getElementById('viewModal'),
+        vesselList: document.getElementById('vesselList'),
+        vesselSelect: document.getElementById('m_vesselSelect'),
+        addVesselForm: document.getElementById('addVesselForm')
+    };
+
+    // ===== 4. УТИЛИТЫ =====
+    const getDisplayName = (internal) => BERTH_DISPLAY_MAP[internal] || internal;
+    
+    const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('ru-RU', {
+        weekday: 'long', day: 'numeric', month: 'long'
+    });
+
+    const generateDates = (baseDateStr) => {
         const res = [];
         const base = new Date(baseDateStr);
         for (let i = 0; i < 4; i++) {
@@ -43,37 +70,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             res.push(d.toISOString().split('T')[0]);
         }
         return res;
-    }
+    };
 
-    // ===== СИНХРОНИЗАЦИЯ С СЕРВЕРОМ (время + дата) =====
+    // ===== 5. СИНХРОНИЗАЦИЯ ВРЕМЕНИ =====
     async function syncServerTime() {
         try {
             const res = await fetch(`/api/server-time?t=${Date.now()}`);
             const data = await res.json();
             
-            const serverDate = data.date;
-            const serverHour = data.hour;
+            const dateChanged = currentServerDate !== data.date;
+            const lockChanged = isTodayPartiallyLocked !== (data.hour >= 15);
 
-            if (currentServerDate !== serverDate) {
-                console.log(`📅 Дата сменилась: ${currentServerDate || 'null'} → ${serverDate}`);
-                currentServerDate = serverDate;
-                dates = generateDates(serverDate);
+            currentServerDate = data.date;
+            isTodayPartiallyLocked = data.hour >= 15;
+
+            if (dateChanged) {
+                dates = generateDates(data.date);
                 renderAllTables();
                 loadVessels();
-                return;
-            }
-
-            const wasLocked = isTodayPartiallyLocked;
-            isTodayPartiallyLocked = serverHour >= 15;
-            
-            if (wasLocked !== isTodayPartiallyLocked) {
-                console.log(`🔒 Время изменилось: ${wasLocked ? '>=15' : '<15'} → ${isTodayPartiallyLocked ? '>=15' : '<15'}`);
+            } else if (lockChanged) {
                 renderAllTables();
             }
         } catch (e) {
             console.error('⚠️ Ошибка синхронизации:', e);
-            const now = new Date();
-            const localDate = now.toISOString().split('T')[0];
+            const localDate = new Date().toISOString().split('T')[0];
             if (currentServerDate !== localDate) {
                 currentServerDate = localDate;
                 dates = generateDates(localDate);
@@ -82,507 +102,134 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ===== WEBSOCKET ПОДКЛЮЧЕНИЕ =====
-    let ws;
+    // ===== 6. WEBSOCKET =====
     function connectWS() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}/ws/schedule`);
-        
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/schedule`);
+
         ws.onopen = () => console.log('📡 WS Connected');
-        
         ws.onmessage = (event) => {
             const msg = JSON.parse(event.data);
-            if (msg.type === 'schedule_updated') {
-                console.log('🔄 Получено обновление для даты:', msg.date);
-                loadScheduleData(msg.date);
-            }
+            if (msg.type === 'schedule_updated') loadScheduleData(msg.date);
         };
-        
         ws.onclose = () => setTimeout(connectWS, 3000);
     }
-    
-    connectWS();
 
-    // ===== ФУНКЦИЯ ОТРИСОВКИ ВСЕХ ТАБЛИЦ =====
+    // ===== 7. ОТРИСОВКА ТАБЛИЦ =====
     function renderAllTables() {
-    tablesContainer.innerHTML = '';
-    
-    dates.forEach((dateStr, index) => {
-        const isToday = index === 0;
-        
-        const grid = document.createElement('div');
-        grid.className = 'schedule-grid';
-        
-        let headerText = formatDate(dateStr);
-        if (isToday) {
-            headerText = isTodayPartiallyLocked 
-                ? 'Сегодня ⚠️ Только слоты с 17:00' 
-                : 'Сегодня ✅ Открыто до 15:00';
-        }
-        grid.innerHTML = `<h2>📅 ${headerText}</h2>`;
+        els.tablesContainer.innerHTML = '';
 
-        const table = document.createElement('table');
-        table.className = 's-table';
-        table.innerHTML = `
-            <thead>
-                <tr>
+        dates.forEach((dateStr, index) => {
+            const isToday = index === 0;
+            const grid = document.createElement('div');
+            grid.className = 'schedule-grid';
+
+            let headerText = formatDate(dateStr);
+            if (isToday) {
+                headerText = isTodayPartiallyLocked
+                    ? 'Сегодня ⚠️ Только слоты с 17:00'
+                    : 'Сегодня ✅ Открыто до 15:00';
+            }
+            grid.innerHTML = `<h2>📅 ${headerText}</h2>`;
+
+            const table = document.createElement('table');
+            table.className = 's-table';
+            table.innerHTML = `
+                <thead><tr>
                     <th>⏰ Время</th>
-                    <th>🚢 Причал №1</th>
-                    <th>🚢 Причал №2</th>
-                    <th>🚢 Причал №3</th>
-                    <th>🚢 Причал №4</th>
-                    <th>🚢 Причал №5</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        `;
+                    ${BERTH_NAMES.map(n => `<th>🚢 ${n}</th>`).join('')}
+                </tr></thead>
+                <tbody></tbody>
+            `;
 
-        const tbody = table.querySelector('tbody');
-        
-        TIME_SLOTS.forEach(slot => {
-            const tr = document.createElement('tr');
-            const th = document.createElement('td');
-            th.className = 'hour-cell';
-            th.textContent = slot.display;
-            tr.appendChild(th);
+            const tbody = table.querySelector('tbody');
 
-            for (let b = 1; b <= 5; b++) {
-                const td = document.createElement('td');
-                
-                const isTimeLocked = isToday && isTodayPartiallyLocked && slot.hour < 17;
-                const hasNoRights = !canEdit;
-                
-                // Класс locked только для временной блокировки
-                if (isTimeLocked) {
-                    td.className = 'berth-cell locked';
-                    td.dataset.timeLock = 'true';
-                } else {
-                    td.className = 'berth-cell';
+            TIME_SLOTS.forEach(slot => {
+                const tr = document.createElement('tr');
+                const th = document.createElement('td');
+                th.className = 'hour-cell';
+                th.textContent = slot.display;
+                tr.appendChild(th);
+
+                for (let b = 1; b <= 5; b++) {
+                    const td = document.createElement('td');
+                    const internalBerth = `Причал №${b}`;
+                    const isTimeLocked = isToday && isTodayPartiallyLocked && slot.hour < 17;
+
+                    td.className = isTimeLocked ? 'berth-cell locked' : 'berth-cell';
+                    td.dataset.date = dateStr;
+                    td.dataset.hour = slot.hour;
+                    td.dataset.berth = internalBerth; // В DOM всегда внутреннее имя!
+
+                    if (canEdit && !isTimeLocked) {
+                        td.onclick = () => openModal(dateStr, slot.hour, internalBerth);
+                    }
+                    tr.appendChild(td);
                 }
-                
-                td.dataset.date = dateStr;
-                td.dataset.hour = slot.hour;
-                td.dataset.berth = `Причал №${b}`;
-                
-                if (!hasNoRights && !isTimeLocked) {
-                    td.onclick = () => openModal(dateStr, slot.hour, `Причал №${b}`);
-                }
-                
-                tr.appendChild(td);
-            }
-            tbody.appendChild(tr);
+                tbody.appendChild(tr);
+            });
+
+            grid.appendChild(table);
+            els.tablesContainer.appendChild(grid);
+            loadScheduleData(dateStr);
         });
-
-        grid.appendChild(table);
-        tablesContainer.appendChild(grid);
-        loadScheduleData(dateStr);
-    });
-}
-
-    // ===== ИНИЦИАЛИЗАЦИЯ =====
-    await syncServerTime();
-    setInterval(syncServerTime, 10000);
-
-    // ===== ЗАГРУЗКА СУДОВ =====
-    loadVessels();
-    const addForm = document.getElementById('addVesselForm');
-    if (addForm && !canEdit) {
-        addForm.style.display = 'none';
     }
 
-    // ===== ОБРАБОТЧИКИ МОДАЛЬНОГО ОКНА БРОНИРОВАНИЯ =====
-    document.getElementById('closeModal')?.addEventListener('click', () => {
-        modal.classList.add('hidden');
-        editingEntryId = null;
-        editingEntryDate = null;  
-    });
-
-    window.addEventListener('click', (e) => { 
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-            editingEntryId = null;
-            editingEntryDate = null;
-        }
-        if (e.target === viewModal) viewModal.classList.add('hidden');
-    });
-
-    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const vesselId = parseInt(document.getElementById('m_vesselSelect').value);
-    const newDate = document.getElementById('m_date').value;
-    
-    const data = {
-        date: newDate,
-        hour: parseInt(document.getElementById('m_timeSelect').value),
-        berth: document.getElementById('m_berthSelect').value,
-        vessel_id: vesselId,
-        status: document.getElementById('m_status').value,
-        editing_entry_id: editingEntryId || null,
-        editing_entry_date: editingEntryDate || null
-    };
-    
-    console.log('📝 РЕДАКТИРОВАНИЕ:', {
-        editingEntryId,
-        editingEntryDate,
-        newDate,
-        datesDiffer: editingEntryDate !== newDate
-    });
-    
-    if (!data.date || ![2,5,11,14,17,20,23].includes(data.hour) || isNaN(vesselId)) {
-        alert('Заполните корректно'); return;
-    }
-
-    try {
-
-        const res = await fetch('/api/schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(data)
-        });
-        
-        if (!res.ok) {
-            const err = await res.json();
-            alert(err.detail || 'Ошибка');
-            return;
-        }
-        
-        console.log('✅ Новая запись создана');
-        
-        if (editingEntryId) {
-            console.log('🗑️ Удаляем старую запись:', editingEntryId);
-            
-            // Берём токен напрямую из localStorage прямо перед запросом
-            const currentToken = localStorage.getItem('access_token');
-            
-            if (!currentToken) {
-                console.error('❌ Токен отсутствует в localStorage!');
-                alert('Сессия истекла. Перезагрузите страницу.');
-                window.location.href = '/login.html';
-                return;
-            }
-
-            const deleteRes = await fetch(`/api/schedule/${editingEntryId}`, {
-                method: 'DELETE',
-                headers: { 
-                    'Authorization': `Bearer ${currentToken}`,
-                    'Content-Type': 'application/json' // Добавляем на всякий случай
-                }
-            });
-
-            if (deleteRes.ok) {
-                console.log('✅ Старая запись удалена');
-            } else {
-                console.warn('️ Не удалось удалить старую запись:', await deleteRes.text());
-            }
-            
-            editingEntryId = null;
-            editingEntryDate = null;
-        }
-        modal.classList.add('hidden');
-        
-        console.log('🔄 Обновляем НОВУЮ дату:', data.date);
-        loadScheduleData(data.date);
-        
-    } catch (err) {
-        alert('Ошибка сети');
-        console.error('❌', err);
-    }
-});
-
-    // ===== ДОБАВЛЕНИЕ СУДНА =====
-    document.getElementById('addVesselForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('vesselName').value;
-        const number = document.getElementById('vesselNumber').value;
-
-        try {
-            const res = await fetch('/api/vessels', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ vessel_name: name, vessel_number: number })
-            });
-            if (res.ok) {
-                e.target.reset();
-                loadVessels();
-            } else {
-                const err = await res.json();
-                alert(err.detail || 'Не удалось добавить судно');
-            }
-        } catch (err) {
-            alert('Ошибка сети');
-        }
-    });
-
-    // ===== УДАЛЕНИЕ СУДНА (делегирование) =====
-    vesselList.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.btn-del');
-        if (!btn) return;
-
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
-
-        if (!confirm(`Удалить судно "${name}"?`)) return;
-
-        try {
-            const res = await fetch(`/api/vessels/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                loadVessels(); 
-            } else {
-                const err = await res.json();
-                alert(err.detail || 'Не удалось удалить судно');
-            }
-        } catch (err) {
-            alert('Ошибка сети');
-            console.error('❌ Network error:', err);
-        }
-    });
-
-    // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА РЕДАКТИРОВАНИЯ =====
-    async function openEditModal(entryId) {
-        try {
-            const res = await fetch(`/api/schedule/${entryId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) { alert('Не удалось загрузить данные'); return; }
-            
-            const entry = await res.json();
-            
-            // Заполняем форму
-            document.getElementById('m_date').value = entry.date;
-            document.getElementById('m_timeSelect').value = entry.hour;
-            document.getElementById('m_berthSelect').value = entry.berth;
-            document.getElementById('m_berth').value = entry.berth;
-            document.getElementById('m_vesselSelect').value = entry.vessel_id;
-            document.getElementById('m_status').value = entry.status;
-            
-            editingEntryId = entryId;
-            editingEntryDate = entry.date;  
-            
-            modal.classList.remove('hidden');
-            viewModal.classList.add('hidden');
-            
-        } catch (err) {
-            console.error('Ошибка:', err);
-            alert('Ошибка сети');
-        }
-    }
-
-    // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
-
-    function openModal(date, hour, berth) {
-        document.getElementById('m_date').value = date;
-        document.getElementById('m_berth').value = berth;
-        document.getElementById('m_berthSelect').value = berth;
-        document.getElementById('m_timeSelect').value = hour;
-        modal.classList.remove('hidden');
-    }
-
-    // Открытие модального окна просмотра
-    async function openViewModal(entryId) {
-    try {
-        const res = await fetch(`/api/schedule/${entryId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (!res.ok) {
-            alert('Не удалось загрузить информацию');
-            return;
-        }
-        
-        const entry = await res.json();
-        currentViewEntryId = entryId;
-        
-        // Заполняем данные
-        document.getElementById('view_vessel_name').textContent = entry.vessel_name;
-        document.getElementById('view_vessel_number').textContent = entry.vessel_number || 'Не указан';
-        document.getElementById('view_date').textContent = entry.date;
-        document.getElementById('view_time').textContent = `${entry.hour}:00`;
-        document.getElementById('view_berth').textContent = entry.berth;
-        document.getElementById('view_status').textContent = entry.status;
-        
-        document.getElementById('view_owner').textContent = entry.owner_username || '—';
-        document.getElementById('view_company').textContent = entry.owner_company || '—';
-        
-        // Кнопки только для владельца
-        const isOwner = entry.owner_id === currentUserId;
-        document.getElementById('btn_delete_entry').style.display = isOwner ? 'inline-block' : 'none';
-        document.getElementById('btn_edit_entry').style.display = isOwner ? 'inline-block' : 'none';
-        document.getElementById('btn_delete_entry').dataset.id = entryId;
-        document.getElementById('btn_edit_entry').dataset.id = entryId;
-        
-        viewModal.classList.remove('hidden');
-    } catch (err) {
-        console.error('Ошибка загрузки:', err);
-        alert('Ошибка сети');
-    }}
-
-    // ОБРАБОТЧИКИ МОДАЛЬНОГО ОКНА ПРОСМОТРА
-    document.getElementById('closeViewModal')?.addEventListener('click', () => {
-        viewModal?.classList.add('hidden');
-    });
-
-    document.getElementById('btn_delete_entry')?.addEventListener('click', async (e) => {
-        if (!confirm('Удалить это бронирование?')) return;
-        
-        const id = e.target.dataset.id;
-        try {
-            const res = await fetch(`/api/schedule/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (res.ok) {
-                viewModal?.classList.add('hidden');
-                const firstCell = document.querySelector('.berth-cell');
-                if (firstCell) {
-                    loadScheduleData(firstCell.dataset.date);
-                }
-            } else {
-                const err = await res.json();
-                alert(err.detail || 'Не удалось удалить');
-            }
-        } catch (err) {
-            alert('Ошибка сети');
-        }
-    });
-
-    document.getElementById('btn_edit_entry')?.addEventListener('click', async (e) => {
-        const entryId = e.target.dataset.id;
-        if (entryId) {
-            await openEditModal(entryId);
-        }
-    });
-
-    async function loadVessels() {
-        try {
-            const res = await fetch('/api/vessels', { 
-                headers: { 'Authorization': `Bearer ${token}` } 
-            });
-            const vessels = await res.json();
-            
-            vesselList.innerHTML = vessels.length ? '' : '<li class="empty-msg">Нет судов</li>';
-            vesselSelect.innerHTML = '';
-            
-            vessels.forEach(v => {
-                const li = document.createElement('li');
-                li.className = 'vessel-item';
-                li.style.cssText = "display:flex; justify-content:space-between; align-items:center; gap:8px;";
-                
-                li.innerHTML = `
-                    <span>${v.vessel_name} (${v.vessel_number})</span>
-                    <button class="btn-del" data-id="${v.id}" data-name="${v.vessel_name}" 
-                            style="background:none; border:none; cursor:pointer; font-size:16px; opacity:0.5; transition:0.2s;"
-                            onmouseover="this.style.opacity='1'" 
-                            onmouseout="this.style.opacity='0.5'">
-                        🗑️
-                    </button>
-                `;
-                
-                vesselList.appendChild(li);
-                vesselSelect.innerHTML += `<option value="${v.id}">${v.vessel_name}</option>`;
-            });
-        } catch (e) { 
-            console.error('Ошибка загрузки судов:', e); 
-        }
-    }
-
+    // ===== 8. ЗАГРУЗКА РАСПИСАНИЯ =====
     async function loadScheduleData(dateStr) {
-        try {
-            if (!dateStr) {
-                const firstCell = document.querySelector('.berth-cell');
-                if (firstCell) {
-                    dateStr = firstCell.dataset.date;
-                } else {
-                    console.error('Не удалось определить дату');
-                    return;
-                }
-            }
-            
-            const bookedCellsForDate = document.querySelectorAll(`td[data-date="${dateStr}"].booked`);
-            bookedCellsForDate.forEach(cell => {
-                cell.textContent = '';
-                cell.classList.remove('booked');
-                cell.removeAttribute('data-status');
-                cell.removeAttribute('data-entryid');
-                cell.onclick = null;
-                cell.style.cursor = '';
-            });
+        if (!dateStr) return;
 
-            const url = `/api/schedule?date=${dateStr}`;
-            console.log('📥 Загрузка расписания:', url);
-            
-            const res = await fetch(url, { 
-                headers: { 'Authorization': `Bearer ${token}` } 
+        // Очищаем только занятые ячейки для этой даты
+        document.querySelectorAll(`td[data-date="${dateStr}"].booked`).forEach(cell => {
+            cell.textContent = '';
+            cell.classList.remove('booked');
+            delete cell.dataset.status;
+            delete cell.dataset.entryId;
+            cell.onclick = null;
+            cell.style.cursor = '';
+        });
+
+        try {
+            const res = await fetch(`/api/schedule?date=${dateStr}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
             });
-            
-            if (!res.ok) {
-                const err = await res.json();
-                console.error('❌ Ошибка сервера:', err);
-                return;
-            }
-            
+            if (!res.ok) return;
+
             const entries = await res.json();
-            console.log('📋 Получено записей:', entries.length);
-            
+
             entries.forEach(entry => {
                 const entryDate = String(entry.date).split('T')[0];
-                
                 const cell = document.querySelector(
                     `td[data-date="${entryDate}"][data-hour="${entry.hour}"][data-berth="${entry.berth}"]`
                 );
-                
-                if (!cell) {
-                    console.warn('⚠️ Ячейка не найдена:', {
-                        date: entryDate,
-                        hour: entry.hour,
-                        berth: entry.berth,
-                        expectedSelector: `td[data-date="${entryDate}"][data-hour="${entry.hour}"][data-berth="${entry.berth}"]`
-                    });
-                    return;
-                }
-                
-                const vesselPart = entry.vessel_name || 'Неизвестно';
-                const companyPart = entry.owner_company || '—';
-                
+                if (!cell) return;
+
                 cell.innerHTML = `
-                    <span class="vessel-name">${vesselPart}</span>
-                    <span class="company-name">${companyPart}</span>
+                    <span class="vessel-name">${entry.vessel_name || 'Неизвестно'}</span>
+                    <span class="company-name">${entry.owner_company || '—'}</span>
                 `;
-                
                 cell.classList.add('booked');
                 cell.dataset.status = entry.status;
                 cell.dataset.entryId = entry.id;
-                
+                cell.style.cursor = 'pointer';
                 cell.onclick = (e) => {
                     e.stopPropagation();
                     openViewModal(entry.id);
                 };
-                
-                cell.style.cursor = 'pointer';
             });
-            
-            const allCellsForDate = document.querySelectorAll(`td[data-date="${dateStr}"]`);
-            allCellsForDate.forEach(cell => {
-                if (!cell.classList.contains('booked')) {
-                    const hour = parseInt(cell.dataset.hour);
-                    const berth = cell.dataset.berth;
-                    
-                    const isToday = dateStr === dates[0];
-                    const isTimeLocked = isToday && isTodayPartiallyLocked && hour < 17;
-                    const hasNoRights = !canEdit;
-                    
-                    if (!hasNoRights && !isTimeLocked) {
-                        cell.onclick = () => openModal(dateStr, hour, berth);
-                        cell.style.cursor = 'pointer';
-                    } else {
-                        cell.onclick = null;
-                        cell.style.cursor = 'not-allowed';
-                    }
+
+            // Восстанавливаем клики для свободных ячеек
+            document.querySelectorAll(`td[data-date="${dateStr}"]:not(.booked)`).forEach(cell => {
+                const hour = parseInt(cell.dataset.hour);
+                const isToday = dateStr === dates[0];
+                const isTimeLocked = isToday && isTodayPartiallyLocked && hour < 17;
+
+                if (canEdit && !isTimeLocked) {
+                    cell.style.cursor = 'pointer';
+                    cell.onclick = () => openModal(dateStr, hour, cell.dataset.berth);
+                } else {
+                    cell.style.cursor = 'not-allowed';
+                    cell.onclick = null;
                 }
             });
         } catch (err) {
@@ -590,8 +237,195 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    function formatDate(dateStr) {
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+    // ===== 9. МОДАЛЬНЫЕ ОКНА =====
+    function openModal(date, hour, berth) {
+        document.getElementById('m_date').value = date;
+        document.getElementById('m_timeSelect').value = hour;
+        document.getElementById('m_berthSelect').value = berth;
+        document.getElementById('m_berth').value = berth;
+        editingEntryId = null;
+        els.modal.classList.remove('hidden');
     }
+
+    async function openEditModal(entryId) {
+        try {
+            const res = await fetch(`/api/schedule/${entryId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            if (!res.ok) return alert('Не удалось загрузить данные');
+
+            const entry = await res.json();
+            document.getElementById('m_date').value = entry.date;
+            document.getElementById('m_timeSelect').value = entry.hour;
+            document.getElementById('m_berthSelect').value = entry.berth;
+            document.getElementById('m_berth').value = entry.berth;
+            document.getElementById('m_vesselSelect').value = entry.vessel_id;
+            document.getElementById('m_status').value = entry.status;
+
+            editingEntryId = entryId;
+            els.modal.classList.remove('hidden');
+            els.viewModal.classList.add('hidden');
+        } catch (err) {
+            console.error('Ошибка открытия редактирования:', err);
+        }
+    }
+
+    async function openViewModal(entryId) {
+        try {
+            const res = await fetch(`/api/schedule/${entryId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            if (!res.ok) return;
+
+            const entry = await res.json();
+            document.getElementById('view_vessel_name').textContent = entry.vessel_name;
+            document.getElementById('view_vessel_number').textContent = entry.vessel_number || '—';
+            document.getElementById('view_date').textContent = entry.date;
+            document.getElementById('view_time').textContent = `${entry.hour}:00`;
+            document.getElementById('view_berth').textContent = getDisplayName(entry.berth);
+            document.getElementById('view_status').textContent = entry.status;
+            document.getElementById('view_owner').textContent = entry.owner_username || '—';
+            document.getElementById('view_company').textContent = entry.owner_company || '—';
+
+            const isOwner = entry.owner_id === currentUserId;
+            document.getElementById('btn_edit_entry').style.display = isOwner ? 'inline-block' : 'none';
+            document.getElementById('btn_delete_entry').style.display = isOwner ? 'inline-block' : 'none';
+            document.getElementById('btn_edit_entry').dataset.id = entryId;
+            document.getElementById('btn_delete_entry').dataset.id = entryId;
+
+            els.viewModal.classList.remove('hidden');
+        } catch (err) {
+            console.error('Ошибка просмотра:', err);
+        }
+    }
+
+    // ===== 10. ОБРАБОТЧИКИ ФОРМЫ (АТОМАРНОЕ РЕДАКТИРОВАНИЕ) =====
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const vesselId = parseInt(document.getElementById('m_vesselSelect').value);
+        const date = document.getElementById('m_date').value;
+        const hour = parseInt(document.getElementById('m_timeSelect').value);
+        const berth = document.getElementById('m_berthSelect').value;
+
+        if (!date || ![2, 5, 11, 14, 17, 20, 23].includes(hour) || isNaN(vesselId)) {
+            return alert('Заполните все поля корректно');
+        }
+
+        const data = { date, hour, berth, vessel_id: vesselId, status: document.getElementById('m_status').value };
+
+        try {
+            const isEditing = !!editingEntryId;
+            const url = isEditing ? `/api/schedule/${editingEntryId}` : '/api/schedule';
+            const method = isEditing ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                return alert(err.detail || 'Ошибка сохранения');
+            }
+
+            els.modal.classList.add('hidden');
+            editingEntryId = null;
+            loadScheduleData(date);
+        } catch (err) {
+            alert('Ошибка сети');
+            console.error(err);
+        }
+    });
+
+    // ===== 11. ПРОЧИЕ ОБРАБОТЧИКИ =====
+    document.getElementById('closeModal')?.addEventListener('click', () => els.modal.classList.add('hidden'));
+    document.getElementById('closeViewModal')?.addEventListener('click', () => els.viewModal.classList.add('hidden'));
+    window.addEventListener('click', (e) => {
+        if (e.target === els.modal) els.modal.classList.add('hidden');
+        if (e.target === els.viewModal) els.viewModal.classList.add('hidden');
+    });
+
+    document.getElementById('btn_edit_entry')?.addEventListener('click', (e) => openEditModal(e.target.dataset.id));
+    document.getElementById('btn_delete_entry')?.addEventListener('click', async (e) => {
+        if (!confirm('Удалить это бронирование?')) return;
+        try {
+            const res = await fetch(`/api/schedule/${e.target.dataset.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            if (res.ok) {
+                els.viewModal.classList.add('hidden');
+                loadScheduleData(dates[0]);
+            } else {
+                const err = await res.json();
+                alert(err.detail || 'Не удалось удалить');
+            }
+        } catch (err) { alert('Ошибка сети'); }
+    });
+
+    // ===== 12. СУДА =====
+    async function loadVessels() {
+        try {
+            const res = await fetch('/api/vessels', { headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } });
+            const vessels = await res.json();
+
+            els.vesselList.innerHTML = vessels.length ? '' : '<li class="empty-msg">Нет судов</li>';
+            els.vesselSelect.innerHTML = '';
+
+            vessels.forEach(v => {
+                const li = document.createElement('li');
+                li.className = 'vessel-item';
+                li.style.cssText = "display:flex; justify-content:space-between; align-items:center; gap:8px;";
+                li.innerHTML = `
+                    <span>${v.vessel_name} (${v.vessel_number})</span>
+                    <button class="btn-del" data-id="${v.id}" data-name="${v.vessel_name}" 
+                            style="background:none; border:none; cursor:pointer; font-size:16px; opacity:0.5;">🗑️</button>
+                `;
+                els.vesselList.appendChild(li);
+                els.vesselSelect.innerHTML += `<option value="${v.id}">${v.vessel_name}</option>`;
+            });
+        } catch (e) { console.error('Ошибка загрузки судов:', e); }
+    }
+
+    els.addVesselForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const res = await fetch('/api/vessels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+                body: JSON.stringify({
+                    vessel_name: document.getElementById('vesselName').value,
+                    vessel_number: document.getElementById('vesselNumber').value
+                })
+            });
+            if (res.ok) { e.target.reset(); loadVessels(); }
+            else alert((await res.json()).detail || 'Ошибка добавления');
+        } catch (err) { alert('Ошибка сети'); }
+    });
+
+    els.vesselList?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-del');
+        if (!btn || !confirm(`Удалить судно "${btn.dataset.name}"?`)) return;
+        try {
+            const res = await fetch(`/api/vessels/${btn.dataset.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+            });
+            if (res.ok) loadVessels();
+            else alert((await res.json()).detail || 'Ошибка удаления');
+        } catch (err) { alert('Ошибка сети'); }
+    });
+
+    if (!canEdit && els.addVesselForm) els.addVesselForm.style.display = 'none';
+
+    // ===== 13. ЗАПУСК =====
+    connectWS();
+    await syncServerTime();
+    setInterval(syncServerTime, 10000);
+    loadVessels();
 });

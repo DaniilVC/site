@@ -18,7 +18,6 @@
                 <button type="submit" class="btn-add">➕ Добавить</button>
             </form>
             <ul id="vesselList" class="vessel-list">
-                <!-- Сюда JS подгрузит суда -->
                 <li class="empty-msg">Загрузка...</li>
             </ul>
         </aside>
@@ -35,7 +34,7 @@
         </main>
     </div>
 
-    <!-- ✅ МОДАЛЬНОЕ ОКНО БРОНИРОВАНИЯ -->
+    <!-- МОДАЛЬНОЕ ОКНО БРОНИРОВАНИЯ -->
     <div id="bookingModal" class="modal hidden">
         <div class="modal-content">
             <h3>📝 Бронирование ячейки</h3>
@@ -56,13 +55,13 @@
                     <option value="23">23:00</option>
                 </select>
                 
-                <label>Причал:</label>
+                <label>Терминал:</label>
                 <select id="m_berthSelect" required>
-                    <option value="Причал №1">Причал №1</option>
-                    <option value="Причал №2">Причал №2</option>
-                    <option value="Причал №3">Причал №3</option>
-                    <option value="Причал №4">Причал №4</option>
-                    <option value="Причал №5">Причал №5</option>
+                    <option value="Причал №1">ТНГ</option>
+                    <option value="Причал №2">ТТНГ</option>
+                    <option value="Причал №3">ЗТКТ</option>
+                    <option value="Причал №4">МТТ</option>
+                    <option value="Причал №5">РЕЙД</option>
                 </select>
 
                 <label>Судно:</label>
@@ -85,7 +84,6 @@
         </div>
     </div>
 
-    <!-- ✅ МОДАЛЬНОЕ ОКНО ПРОСМОТРА (ОТДЕЛЬНО, НА УРОВНЕ BODY) -->
     <div id="viewModal" class="modal hidden">
         <div class="modal-content">
             <h3>📋 Информация о бронировании</h3>
@@ -108,7 +106,7 @@
                     <span class="value" id="view_time">-</span>
                 </div>
                 <div class="info-row">
-                    <span class="label">📍 Причал:</span>
+                    <span class="label">📍 Терминал:</span>
                     <span class="value" id="view_berth">-</span>
                 </div>
                 <div class="info-row">
@@ -133,6 +131,6 @@
         </div>
     </div>
 
-    <script src="/static/js/schedule.js?v=100"></script>
+    <script src="/static/js/schedule.js?v=120"></script>
 </body>
 </html>

@@ -115,7 +115,7 @@ async function loadUsers(token) {
                     </select>
                 </td>
                 <td>
-                    <button class="btn btn-danger" onclick="deleteUser(${user.id})">
+                    <button class="btn btn-danger" onclick="deleteUser(${user.id}, '${user.username}')">
                         🗑️ Удалить
                     </button>
                 </td>

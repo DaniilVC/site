@@ -240,8 +240,8 @@
     border-color: #92400e; 
 }
 .s-table .berth-cell.booked[data-status="Рейд"] { 
-    background: linear-gradient(135deg, #6366f1, #4338ca); 
-    border-color: #3730a3; 
+    background: linear-gradient(135deg, #ef4444, #b91c1c); 
+    border-color: #991b1b; 
 }
 
 /* Заблокированная ячейка */
