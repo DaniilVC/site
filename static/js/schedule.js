@@ -19,11 +19,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentUserId = payload.user_id;
     const canEdit = ['agent', 'director', 'admin'].includes(payload.role);
 
-    // ===== 2. КОНФИГУРАЦИЯ =====
-    // ВАЖНО: Порядок в массиве строго соответствует порядку колонок в HTML-таблице
+    // ===== КОНФИГУРАЦИЯ =====
+    
     const BERTH_NAMES = ['ТНГ', 'ТТНГ', 'ЗТКТ', 'МТТ', 'РЕЙД'];
     
-    // Маппинг для отображения: "Причал №1" -> "ТНГ"
     const BERTH_DISPLAY_MAP = Object.fromEntries(
         BERTH_NAMES.map((name, idx) => [`Причал №${idx + 1}`, name])
     );
@@ -38,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         { display: "23:00", hour: 23 }
     ];
 
-    // ===== 3. СОСТОЯНИЕ =====
+    // ===== СОСТОЯНИЕ =====
     let currentServerDate = null;
     let dates = [];
     let isTodayPartiallyLocked = false;
@@ -54,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         addVesselForm: document.getElementById('addVesselForm')
     };
 
-    // ===== 4. УТИЛИТЫ =====
+    // ===== УТИЛИТЫ =====
     const getDisplayName = (internal) => BERTH_DISPLAY_MAP[internal] || internal;
     
     const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('ru-RU', {
@@ -72,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return res;
     };
 
-    // ===== 5. СИНХРОНИЗАЦИЯ ВРЕМЕНИ =====
+    // ===== СИНХРОНИЗАЦИЯ ВРЕМЕНИ =====
     async function syncServerTime() {
         try {
             const res = await fetch(`/api/server-time?t=${Date.now()}`);
@@ -102,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ===== 6. WEBSOCKET =====
+    // ===== WEBSOCKET =====
     function connectWS() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${protocol}//${window.location.host}/ws/schedule`);
@@ -115,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ws.onclose = () => setTimeout(connectWS, 3000);
     }
 
-    // ===== 7. ОТРИСОВКА ТАБЛИЦ =====
+    // ===== ОТРИСОВКА ТАБЛИЦ =====
     function renderAllTables() {
         els.tablesContainer.innerHTML = '';
 
@@ -175,11 +174,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ===== 8. ЗАГРУЗКА РАСПИСАНИЯ =====
+    // ===== ЗАГРУЗКА РАСПИСАНИЯ =====
     async function loadScheduleData(dateStr) {
         if (!dateStr) return;
 
-        // Очищаем только занятые ячейки для этой даты
         document.querySelectorAll(`td[data-date="${dateStr}"].booked`).forEach(cell => {
             cell.textContent = '';
             cell.classList.remove('booked');
@@ -218,7 +216,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
             });
 
-            // Восстанавливаем клики для свободных ячеек
             document.querySelectorAll(`td[data-date="${dateStr}"]:not(.booked)`).forEach(cell => {
                 const hour = parseInt(cell.dataset.hour);
                 const isToday = dateStr === dates[0];
@@ -237,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ===== 9. МОДАЛЬНЫЕ ОКНА =====
+    // ===== МОДАЛЬНЫЕ ОКНА =====
     function openModal(date, hour, berth) {
         document.getElementById('m_date').value = date;
         document.getElementById('m_timeSelect').value = hour;
@@ -299,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // ===== 10. ОБРАБОТЧИКИ ФОРМЫ (АТОМАРНОЕ РЕДАКТИРОВАНИЕ) =====
+    // ===== ОБРАБОТЧИКИ ФОРМЫ =====
     document.getElementById('bookingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -342,7 +339,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // ===== 11. ПРОЧИЕ ОБРАБОТЧИКИ =====
+    // ===== ПРОЧИЕ ОБРАБОТЧИКИ =====
     document.getElementById('closeModal')?.addEventListener('click', () => els.modal.classList.add('hidden'));
     document.getElementById('closeViewModal')?.addEventListener('click', () => els.viewModal.classList.add('hidden'));
     window.addEventListener('click', (e) => {
@@ -368,7 +365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) { alert('Ошибка сети'); }
     });
 
-    // ===== 12. СУДА =====
+    // ===== СУДА =====
     async function loadVessels() {
         try {
             const res = await fetch('/api/vessels', { headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } });
@@ -423,7 +420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!canEdit && els.addVesselForm) els.addVesselForm.style.display = 'none';
 
-    // ===== 13. ЗАПУСК =====
+    // ===== ЗАПУСК =====
     connectWS();
     await syncServerTime();
     setInterval(syncServerTime, 10000);

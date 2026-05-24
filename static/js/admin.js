@@ -2,7 +2,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Админ-панель загружена');
     
-    // 1. Проверяем токен
     const token = localStorage.getItem('access_token');
     
     if (!token) {
@@ -10,8 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = '/login.html';
         return;
     }
-    
-    // 2. Проверяем, админ ли
+
     try {
         const response = await fetch('/api/profile', {
             headers: {
@@ -33,10 +31,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('❌ Ошибка проверки:', error);
     }
     
-    // 3. Загружаем статистику
+
     await loadStats(token);
     
-    // 4. Загружаем пользователей
+
     await loadUsers(token);
 });
 
