@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // ===== 1. ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ДОСТУПА =====
+    // ===== ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ДОСТУПА =====
     const token = localStorage.getItem('access_token');
     if (!token) {
         window.location.href = '/login.html';
