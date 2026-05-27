@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, Enum, ForeignKey, Date, Boolean
+from sqlalchemy import Column, Integer, String, TIMESTAMP, Enum, ForeignKey, Date, Boolean, UniqueConstraint, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -46,6 +46,10 @@ class Company(Base):
 class User(Base):
     __tablename__ = "users"
 
+    __table_args__ = (
+        Index('idx_unique_email', 'email', unique=True),
+    )
+
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     username = Column(String(60), unique=False, nullable=False)
     telephone_number = Column(String(11), nullable=False, default="Отсутствует")
@@ -78,6 +82,11 @@ class Vessel(Base):
 
 class Schedule(Base):
     __tablename__ = "schedule"
+
+    __table_args__ = (
+        UniqueConstraint('date', 'hour', 'berth', name='uq_schedule_slot'),
+        Index('idx_schedule_hour', 'hour'),
+    )
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
